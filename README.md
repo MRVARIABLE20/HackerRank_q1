@@ -2,101 +2,182 @@
 
 Production-grade Retrieval-Augmented Generation (RAG) system with FastAPI backend and React TypeScript frontend.
 
-## 📋 Prerequisites
+---
 
-### Required Software
-- **Python 3.13+** (Anaconda recommended)
-- **Node.js 18+** and npm
-- **Git** (for version control)
+## ✅ Prerequisites Checklist
 
-### Required API Keys
-- **OpenRouter API Key** - Get from [openrouter.ai](https://openrouter.ai/keys)
-  - Used for: GPT-4o-mini chat + text-embedding-3-small embeddings
-  - Cost: ~$0.02 per 1K queries
+Before starting the app, make sure **every item below** is in place.
+
+### 1. Required Software
+
+| Tool | Minimum Version | Check Command | Download |
+|------|----------------|---------------|----------|
+| Python | 3.13+ | `python --version` | [python.org](https://www.python.org/downloads/) or [Anaconda](https://www.anaconda.com/) |
+| pip | 24+ | `pip --version` | comes with Python |
+| Node.js | 18+ | `node --version` | [nodejs.org](https://nodejs.org/) |
+| npm | 9+ | `npm --version` | comes with Node.js |
+| Git | 2.x | `git --version` | [git-scm.com](https://git-scm.com/) |
+
+> **Windows users:** PowerShell 5.1+ is recommended (already installed on Windows 10/11).
+
+### 2. Required API Key — OpenRouter
+
+You **must** have an OpenRouter API key before starting the backend. Without it, embeddings and chat will fail.
+
+**How to get your key (3 steps):**
+
+1. **Create account** → Visit [openrouter.ai](https://openrouter.ai) → Sign in with Google / GitHub / Email
+2. **Generate key** → Go to [openrouter.ai/keys](https://openrouter.ai/keys) → Click **"Create Key"** → Name it (e.g. `RAG Dev`) → Copy the key — it starts with `sk-or-v1-...`
+3. **Add credits** → Go to [openrouter.ai/credits](https://openrouter.ai/credits) → Add **$5–10** via card — typical cost is ~$0.02 per 1 000 queries
+
+> ⚠️ **Never commit your API key to Git.** The `.env` files are in `.gitignore` by default.
+
+### 3. Required Environment Files
+
+You must create **two `.env` files** manually (they are git-ignored and never committed):
+
+| File | Must Exist Before | Contains |
+|------|------------------|----------|
+| `backend/.env` | Starting the backend | OpenRouter key, JWT secret, DB path, CORS |
+| `frontend/.env` | Starting the frontend | Backend API URL |
+
+Templates are shown in the Quick Start section below.
+
+### 4. Port Availability
+
+Ensure these ports are free before starting:
+
+| Service | Default Port | Check (PowerShell) |
+|---------|-------------|-------------------|
+| Backend (FastAPI) | **8001** | `netstat -ano \| findstr :8001` |
+| Frontend (Vite) | **5173** | `netstat -ano \| findstr :5173` |
+
+> Vite will auto-increment to 5174, 5175… if 5173 is taken. Update `CORS_ORIGINS` in `backend/.env` to match.
+
+### 5. Python Dependencies
+
+All backend packages install from `backend/requirements.txt`. Key packages:
+
+| Package | Purpose |
+|---------|---------|
+| `fastapi` + `uvicorn` | Web framework + ASGI server |
+| `sqlalchemy` | ORM for SQLite |
+| `pydantic-settings` | Load config from `.env` |
+| `python-jose` | JWT signing/verification |
+| `bcrypt` + `passlib` | Password hashing |
+| `httpx` | Async HTTP client (OpenRouter calls) |
+
+Install with: `pip install -r backend/requirements.txt`
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Clone and Navigate
+### Step 1 — Clone the Repository
+
 ```powershell
-cd C:\Users\aayan\Downloads\HackerRank_q1
+git clone https://github.com/MRVARIABLE20/HackerRank_q1.git
+cd HackerRank_q1
 ```
 
-### 2. Backend Setup
+### Step 2 — Backend Setup
 
-#### Install Dependencies
+#### 2a. Install Python dependencies
 ```powershell
 cd backend
 pip install -r requirements.txt
 ```
 
-#### Configure Environment
-Create `backend/.env` file:
+#### 2b. Create `backend/.env`
+
+Create a new file at `backend/.env` with this exact content:
+
 ```env
+# Database — SQLite (default, no setup needed)
 DATABASE_URL_OVERRIDE=sqlite:///./rag.db
+
+# CORS — add any port Vite uses
 CORS_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176
+
+# Auth
 JWT_SECRET=dev-secret-change-in-prod
 JWT_EXP_MINUTES=480
-OPENROUTER_API_KEY=your-api-key-here
+
+# OpenRouter — REPLACE this with your real key
+OPENROUTER_API_KEY=sk-or-v1-YOUR-KEY-HERE
 OPENROUTER_MODEL=openai/gpt-4o-mini
 ```
 
-⚠️ **Replace `your-api-key-here` with your actual OpenRouter API key**
+> ⚠️ Replace `sk-or-v1-YOUR-KEY-HERE` with the key you created at [openrouter.ai/keys](https://openrouter.ai/keys)
 
-#### Start Backend Server
+#### 2c. Start the backend
 ```powershell
-# From backend/ directory
+# Run from the backend/ directory
 python -m uvicorn app.main:app --port 8001 --reload
 ```
 
-**Backend runs on:** http://localhost:8001
+**You should see:**
+```
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8001
+```
 
-✅ **Admin user auto-created on first start:**
+✅ **Admin user is auto-created on first start:**
 - Email: `admin@gmail.com`
 - Password: `admin123`
 
-### 3. Frontend Setup
+### Step 3 — Frontend Setup
 
-#### Install Dependencies
+#### 3a. Install Node dependencies
 ```powershell
+# Open a NEW terminal window, then:
 cd frontend
 npm install
 ```
 
-#### Configure Environment
-Create `frontend/.env` file:
+#### 3b. Create `frontend/.env`
+
+Create a new file at `frontend/.env`:
+
 ```env
 VITE_API_URL=http://localhost:8001
 ```
 
-#### Start Frontend Dev Server
+#### 3c. Start the frontend
 ```powershell
+# From the frontend/ directory
 npm run dev
 ```
 
-**Frontend runs on:** http://localhost:5173 (or next available port)
+**You should see:**
+```
+  VITE v7.x.x  ready in 300 ms
+  ➜  Local:   http://localhost:5173/
+```
+
+**Frontend runs on:** http://localhost:5173
+
+### Step 4 — Verify Everything is Working
+
+Open http://localhost:5173 in your browser:
+1. The login page should load
+2. Log in with `admin@gmail.com` / `admin123`
+3. Dashboard should show (KB Docs: 0, no errors)
+4. Navigate to **Chat** and ask: `"Hello, are you working?"`
+5. You should get a response (confidence may be low until docs are added)
+
+If the chat responds → your setup is complete ✅
 
 ---
 
 ## 🔑 Getting Your OpenRouter API Key
 
-Before starting the backend, you need an OpenRouter API key for embeddings and chat:
+_(Full guide in Prerequisites section above — quick reference here)_
 
-1. **Sign up at OpenRouter:**
-   - Visit [openrouter.ai](https://openrouter.ai)
-   - Click "Sign In" → Sign up with Google/GitHub/Email
-
-2. **Generate API Key:**
-   - Go to [Keys page](https://openrouter.ai/keys)
-   - Click "Create Key"
-   - Give it a name (e.g., "RAG Dev")
-   - Copy the key (starts with `sk-or-v1-...`)
-
-3. **Add $5-10 credits:**
-   - Go to [Credits page](https://openrouter.ai/credits)
-   - Add credits via card/crypto
-   - Typical usage: ~$0.02 per 1K queries
+1. Sign up at [openrouter.ai](https://openrouter.ai)
+2. Go to [Keys page](https://openrouter.ai/keys) → **Create Key** → copy `sk-or-v1-...`
+3. Add $5–10 credits at [openrouter.ai/credits](https://openrouter.ai/credits)
+4. Paste key into `backend/.env` as `OPENROUTER_API_KEY=sk-or-v1-...`
 
 ⚠️ **Keep your API key secure** - never commit it to git!
 
@@ -216,180 +297,331 @@ curl -X POST http://localhost:8001/chat `
 
 ## 🏗️ Architecture Overview
 
-### System Architecture Diagram
+This platform is a **4-tier production-grade RAG system**. Below are three diagrams explaining the full picture: overall structure, how data flows at runtime, and what happens inside the RAG pipeline.
+
+---
+
+### Diagram 1 — Full System Architecture (4 Tiers)
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              USER / CLIENT                                   │
-│                         (Web Browser / API Client)                          │
-└────────────────────────────────┬────────────────────────────────────────────┘
-                                 │
-                                 │ HTTP/HTTPS
-                                 │
-┌────────────────────────────────▼────────────────────────────────────────────┐
-│                          FRONTEND LAYER                                      │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │              React 18 + TypeScript 5 + Vite 7                       │   │
-│  │              Port: 5173 (dev) / 3000 (prod)                         │   │
-│  ├─────────────────────────────────────────────────────────────────────┤   │
-│  │  Components:                                                         │   │
-│  │  • Dashboard.tsx    → Stats, navigation, analytics                 │   │
-│  │  • Chat.tsx         → RAG query interface + citations               │   │
-│  │  • KnowledgeBase.tsx → Document management (add/edit/delete)        │   │
-│  │  • Login.tsx        → Authentication form                           │   │
-│  │  • AuditLog.tsx     → Admin query history viewer                    │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-└────────────────────────────────┬────────────────────────────────────────────┘
-                                 │
-                                 │ REST API (JSON)
-                                 │ Authorization: Bearer <JWT>
-                                 │
-┌────────────────────────────────▼────────────────────────────────────────────┐
-│                          BACKEND LAYER                                       │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │           FastAPI 0.115 + Uvicorn ASGI Server                       │   │
-│  │              Port: 8001 (dev) / 8000 (prod)                         │   │
-│  ├─────────────────────────────────────────────────────────────────────┤   │
-│  │  API Routers:                                                        │   │
-│  │  • /auth/*         → Login, signup, JWT token generation            │   │
-│  │  • /chat           → RAG query endpoint (semantic search + LLM)     │   │
-│  │  • /kb/docs/*      → User KB document CRUD                          │   │
-│  │  • /admin/docs/*   → Admin KB document management                   │   │
-│  │  • /admin/audit/*  → Query history & analytics                      │   │
-│  ├─────────────────────────────────────────────────────────────────────┤   │
-│  │  Core Services:                                                      │   │
-│  │  • auth.py         → JWT HS256 + bcrypt password hashing            │   │
-│  │  • seed.py         → Auto-create admin@gmail.com on startup         │   │
-│  │  • config.py       → Environment settings loader                    │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-└──────────┬──────────────────────────────────────────────────┬───────────────┘
-           │                                                  │
-           │ SQLAlchemy 2 ORM                                 │ HTTPS
-           │                                                  │
-┌──────────▼──────────────────────┐          ┌───────────────▼───────────────┐
-│     DATABASE LAYER              │          │   EXTERNAL SERVICES            │
-│  ┌──────────────────────────┐   │          │  ┌─────────────────────────┐  │
-│  │   SQLite (rag.db)        │   │          │  │   OpenRouter API        │  │
-│  │   Location: backend/     │   │          │  │   openrouter.ai         │  │
-│  ├──────────────────────────┤   │          │  ├─────────────────────────┤  │
-│  │  Tables:                 │   │          │  │  Models:                │  │
-│  │  • users                 │   │          │  │  • gpt-4o-mini          │  │
-│  │    (id, email, hash)     │   │          │  │    (Chat LLM)           │  │
-│  │  • roles                 │   │          │  │  • text-embedding-      │  │
-│  │    (id, name)            │   │          │  │    3-small              │  │
-│  │  • user_roles            │   │          │  │    (1536-dim vectors)   │  │
-│  │    (user_id, role_id)    │   │          │  │                         │  │
-│  │  • kb_documents          │   │          │  │  Cost: ~$0.02/1K        │  │
-│  │    (id, title, content,  │   │          │  │        queries          │  │
-│  │     category, metadata)  │   │          │  └─────────────────────────┘  │
-│  │  • audit_logs            │   │          └───────────────────────────────┘
-│  │    (id, user, query,     │   │
-│  │     timestamp)           │   │
-│  └──────────────────────────┘   │
-└─────────────────────────────────┘
-
-
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                       RAG PIPELINE FLOW (Detailed)                           │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-    [1] User Query                    [2] Authentication
-         ↓                                     ↓
-    "What is our                      JWT token validation
-     GDPR policy?"                    (backend/app/auth.py)
-         ↓                                     ↓
-         └─────────────────┬───────────────────┘
-                          │
-                [3] POST /chat
-         ┌─────────────────▼─────────────────┐
-         │  Embed User Query                 │
-         │  → OpenRouter API                 │
-         │  → text-embedding-3-small         │
-         │  → Returns: [1536-dim vector]     │
-         └─────────────────┬─────────────────┘
-                          │
-         ┌─────────────────▼─────────────────┐
-         │  Load All KB Documents            │
-         │  → Query: kb_documents table      │
-         │  → Check embedding cache          │
-         │  → Embed new docs if needed       │
-         └─────────────────┬─────────────────┘
-                          │
-         ┌─────────────────▼─────────────────┐
-         │  Semantic Search                  │
-         │  → Compute cosine similarity      │
-         │  → Between query & each doc       │
-         │  → Rank all documents             │
-         │  → Select top-6 matches           │
-         └─────────────────┬─────────────────┘
-                          │
-         ┌─────────────────▼─────────────────┐
-         │  Assemble Context Prompt          │
-         │  → Template:                      │
-         │    "Based on these docs:          │
-         │     [DOC-1] <content>             │
-         │     [DOC-2] <content>             │
-         │     ...                           │
-         │     Answer: <user query>"         │
-         └─────────────────┬─────────────────┘
-                          │
-         ┌─────────────────▼─────────────────┐
-         │  LLM Generation                   │
-         │  → OpenRouter gpt-4o-mini         │
-         │  → System: You are RAG assistant  │
-         │  → Context: Top-6 doc snippets    │
-         │  → Generate cited answer          │
-         └─────────────────┬─────────────────┘
-                          │
-         ┌─────────────────▼─────────────────┐
-         │  Log Query                        │
-         │  → audit_logs table               │
-         │  → (user, query, timestamp)       │
-         └─────────────────┬─────────────────┘
-                          │
-         ┌─────────────────▼─────────────────┐
-         │  Return Response                  │
-         │  {                                │
-         │    "answer": "...",               │
-         │    "sources": [                   │
-         │      {                            │
-         │        "doc_id": 1,               │
-         │        "title": "...",            │
-         │        "snippet": "...",          │
-         │        "score": 0.89              │
-         │      }                            │
-         │    ],                             │
-         │    "confidence": 0.89             │
-         │  }                                │
-         └───────────────────────────────────┘
+ ╔══════════════════════════════════════════════════════════════════════════════╗
+ ║                          TIER 1 — CLIENT                                    ║
+ ║  Any browser or HTTP client (curl, Postman, automated scripts)               ║
+ ║                                                                              ║
+ ║   [User]  ──────  opens http://localhost:5173  ──────►  React SPA           ║
+ ║   [Admin] ──────  same URL, different role menu ──────►  React SPA           ║
+ ║   [Dev]   ──────  curl / Postman  ────────────────────►  REST API directly   ║
+ ╚══════════════════╤══════════════════════════════════════════════════════════╝
+                    │
+      ┌─────────────┴──────────────────────────────────────┐
+      │  HTTP GET/POST   (pages, assets, hot-reload)        │  (Vite dev server)
+      ▼                                                     ▼
+ ╔══════════════════════════════════════════════════════════════════════════════╗
+ ║                    TIER 2 — FRONTEND  (localhost:5173)                       ║
+ ║              React 18  ·  TypeScript 5  ·  Vite 7  ·  CSS Variables         ║
+ ║                                                                              ║
+ ║  ┌──────────────────┐   ┌──────────────────┐   ┌──────────────────────┐    ║
+ ║  │  Auth Pages       │   │  Dashboard.tsx    │   │  Chat.tsx             │   ║
+ ║  │  ─────────────── │   │  ────────────── ─ │   │  ──────────────────── │   ║
+ ║  │  Login.tsx        │   │  • Doc count      │   │  • Type query         │   ║
+ ║  │  Signup.tsx       │   │  • Avg confidence │   │  • See cited answer   │   ║
+ ║  │                   │   │  • Token expiry   │   │  • "Why This Answer?" │   ║
+ ║  │  On success:      │   │  • Embed model    │   │    → top-6 source     │   ║
+ ║  │  store JWT in     │   │  • Nav to Chat/KB │   │    snippets + scores  │   ║
+ ║  │  localStorage     │   └──────────────────┘   └──────────────────────┘   ║
+ ║  └──────────────────┘                                                        ║
+ ║  ┌──────────────────┐   ┌──────────────────┐   ┌──────────────────────┐    ║
+ ║  │  KnowledgeBase    │   │  AdminPortal.tsx  │   │  api.ts               │   ║
+ ║  │  .tsx / KBPage    │   │  ────────────── ─ │   │  ──────────────────── │   ║
+ ║  │  ─────────────── │   │  • View audit log │   │  Typed Fetch wrapper  │   ║
+ ║  │  • List all docs  │   │  • Query history  │   │  Attaches Bearer JWT  │   ║
+ ║  │  • Add document   │   │  • Confidence     │   │  to every request     │   ║
+ ║  │  • Delete doc     │   │  • User emails    │   │                       │   ║
+ ║  └──────────────────┘   └──────────────────┘   └──────────────────────┘   ║
+ ╚══════════════════╤══════════════════════════════════════════════════════════╝
+                    │
+                    │  REST JSON over HTTP
+                    │  Authorization: Bearer <JWT token>
+                    │  Content-Type: application/json
+                    │
+                    ▼
+ ╔══════════════════════════════════════════════════════════════════════════════╗
+ ║                    TIER 3 — BACKEND  (localhost:8001)                        ║
+ ║            FastAPI 0.115  ·  Uvicorn ASGI  ·  Python 3.13                   ║
+ ║                                                                              ║
+ ║  ┌─────────────────────────────────────────────────────────────────────┐    ║
+ ║  │  MIDDLEWARE                                                          │    ║
+ ║  │  • CORS — allows requests from localhost:5173/5174/5175/5176         │    ║
+ ║  │  • JWT guard — verifies Bearer token on protected routes             │    ║
+ ║  └─────────────────────────────────────────────────────────────────────┘    ║
+ ║                                                                              ║
+ ║  ┌─────────────────────────────────────────────────────────────────────┐    ║
+ ║  │  API ROUTERS                                                         │    ║
+ ║  │                                                                      │    ║
+ ║  │  POST  /auth/login       →  routers/auth.py                          │    ║
+ ║  │        validate email+password, return signed JWT (HS256, 480 min)  │    ║
+ ║  │                                                                      │    ║
+ ║  │  POST  /auth/signup      →  routers/auth.py                          │    ║
+ ║  │        hash password with bcrypt, insert user row, assign role       │    ║
+ ║  │                                                                      │    ║
+ ║  │  POST  /chat             →  routers/chat.py  ★ CORE RAG PIPELINE ★   │    ║
+ ║  │        embed → search → rank → prompt → LLM → log → respond         │    ║
+ ║  │                                                                      │    ║
+ ║  │  GET   /kb/docs          →  routers/kb_docs.py                       │    ║
+ ║  │        return all KB documents (any authenticated user)              │    ║
+ ║  │                                                                      │    ║
+ ║  │  POST  /kb/docs          →  routers/kb_docs.py                       │    ║
+ ║  │        insert new document, invalidate embedding cache entry         │    ║
+ ║  │                                                                      │    ║
+ ║  │  DELETE /kb/docs/{id}    →  routers/kb_docs.py                       │    ║
+ ║  │        delete own doc (admin can delete any doc)                     │    ║
+ ║  │                                                                      │    ║
+ ║  │  GET|POST /admin/docs    →  routers/admin_docs.py  [admin only]      │    ║
+ ║  │  PATCH /admin/docs/{id}  →  routers/admin_docs.py  [admin only]      │    ║
+ ║  │                                                                      │    ║
+ ║  │  GET  /admin/audit-log   →  routers/audit.py  [admin only]           │    ║
+ ║  │        return all queries with user, timestamp, confidence           │    ║
+ ║  └─────────────────────────────────────────────────────────────────────┘    ║
+ ║                                                                              ║
+ ║  ┌──────────────────┐  ┌──────────────────┐  ┌───────────────────────┐     ║
+ ║  │  app/auth.py      │  │  app/seed.py      │  │  app/config.py        │     ║
+ ║  │  ─────────────── │  │  ──────────────── │  │  ──────────────────── │     ║
+ ║  │  create_token()   │  │  seed_if_empty()  │  │  BaseSettings loads   │     ║
+ ║  │  verify_token()   │  │  called on every  │  │  OPENROUTER_API_KEY   │     ║
+ ║  │  hash_password()  │  │  startup; creates │  │  JWT_SECRET           │     ║
+ ║  │  verify_password()│  │  admin@gmail.com  │  │  CORS_ORIGINS         │     ║
+ ║  │  (bcrypt rounds)  │  │  if DB is empty   │  │  from backend/.env    │     ║
+ ║  └──────────────────┘  └──────────────────┘  └───────────────────────┘     ║
+ ╚═══════╤══════════════════════════════════════════════════╤═══════════════════╝
+         │                                                  │
+         │  SQLAlchemy 2 ORM (sync)                         │  HTTPS REST
+         │  reads/writes on every request                   │  called only
+         ▼                                                  │  during /chat
+ ╔══════════════════════════════╗                           ▼
+ ║  TIER 4a — DATABASE           ║           ╔══════════════════════════════════╗
+ ║  SQLite  ·  backend/rag.db    ║           ║  TIER 4b — OPENROUTER AI API     ║
+ ║                               ║           ║  https://openrouter.ai/api/v1    ║
+ ║  Table: users                 ║           ║                                  ║
+ ║  ┌──────────────────────────┐ ║           ║  Endpoint 1: /embeddings         ║
+ ║  │ id  │ email │ pwd_hash   │ ║           ║  Model: text-embedding-3-small   ║
+ ║  │  1  │ admin │ $2b$12$... │ ║           ║  Input:  text string             ║
+ ║  └──────────────────────────┘ ║           ║  Output: float[1536]             ║
+ ║                               ║           ║  Used:   embed query + new docs  ║
+ ║  Table: roles                 ║           ║                                  ║
+ ║  ┌───────────────────────────┐ ║           ║  Endpoint 2: /chat/completions   ║
+ ║  │ id  │ name               │ ║           ║  Model: gpt-4o-mini              ║
+ ║  │  1  │ admin              │ ║           ║  Input:  system prompt +         ║
+ ║  │  2  │ intern             │ ║           ║          6 doc contexts +        ║
+ ║  └───────────────────────────┘ ║           ║          user query             ║
+ ║                               ║           ║  Output: cited answer text       ║
+ ║  Table: kb_documents          ║           ║                                  ║
+ ║  ┌──────────────────────────┐ ║           ║  Auth:   sk-or-v1-... API key    ║
+ ║  │ id    │ title            │ ║           ║  Cost:   ~$0.02 per 1K queries   ║
+ ║  │ owner │ category         │ ║           ╚══════════════════════════════════╝
+ ║  │ content (full text)      │ ║
+ ║  └──────────────────────────┘ ║
+ ║                               ║
+ ║  Table: audit_logs            ║
+ ║  ┌──────────────────────────┐ ║
+ ║  │ id         │ user_id     │ ║
+ ║  │ query_text │ timestamp   │ ║
+ ║  │ confidence │ source_ids  │ ║
+ ║  └──────────────────────────┘ ║
+ ╚══════════════════════════════╝
 ```
+
+---
+
+### Diagram 2 — End-to-End Request Flow (Two Scenarios)
+
+#### Scenario A: User Logs In
+
+```
+  Browser                  Frontend (React)            Backend (FastAPI)         SQLite DB
+     │                           │                           │                       │
+     │── enter email+password ──►│                           │                       │
+     │                           │── POST /auth/login ──────►│                       │
+     │                           │   {email, password}       │                       │
+     │                           │                           │── SELECT user WHERE ──►│
+     │                           │                           │   email = ?            │
+     │                           │                           │◄─ {id, pwd_hash, role}─│
+     │                           │                           │                       │
+     │                           │                           │  bcrypt.verify(        │
+     │                           │                           │    password, hash)     │
+     │                           │                           │  → True / raise 401    │
+     │                           │                           │                       │
+     │                           │                           │  jwt.encode({          │
+     │                           │                           │    sub: user_id,       │
+     │                           │                           │    role: "admin",      │
+     │                           │                           │    exp: now+480min     │
+     │                           │                           │  }, JWT_SECRET)        │
+     │                           │                           │                       │
+     │                           │◄── 200 {access_token} ───│                       │
+     │                           │                           │                       │
+     │                           │  localStorage.setItem(    │                       │
+     │                           │    "token", access_token) │                       │
+     │                           │  navigate("/dashboard")   │                       │
+     │◄── render Dashboard ──────│                           │                       │
+```
+
+#### Scenario B: User Sends a RAG Chat Query
+
+```
+  Browser           Frontend          Backend/chat.py      SQLite DB        OpenRouter API
+     │                  │                    │                  │                  │
+     │─ type query ────►│                    │                  │                  │
+     │  "GDPR policy?"  │                    │                  │                  │
+     │                  │─ POST /chat ───────►                  │                  │
+     │                  │  Bearer <JWT>       │                  │                  │
+     │                  │  {query:"GDPR..."}  │                  │                  │
+     │                  │                    │                  │                  │
+     │                  │              [1] Validate JWT         │                  │
+     │                  │              decode → user_id, role   │                  │
+     │                  │                    │                  │                  │
+     │                  │              [2] Embed query ─────────────────────────►│
+     │                  │                    │   POST /embeddings                 │
+     │                  │                    │   model: text-embedding-3-small    │
+     │                  │                    │◄────────── float[1536] ────────────│
+     │                  │                    │                  │                  │
+     │                  │              [3] Load KB docs ────────►                  │
+     │                  │                    │   SELECT * FROM kb_documents        │
+     │                  │                    │◄──── rows[] ─────│                  │
+     │                  │                    │                  │                  │
+     │                  │              [4] Check embed cache (_embed_cache dict)   │
+     │                  │                    │  if doc.id NOT in cache:            │
+     │                  │                    │    embed(doc.content) ─────────────►│
+     │                  │                    │◄───────────────── float[1536] ─────│
+     │                  │                    │    cache[doc.id] = vector           │
+     │                  │                    │                  │                  │
+     │                  │              [5] Rank all docs by cosine similarity      │
+     │                  │                    │                  │                  │
+     │                  │                    │  for each doc:                      │
+     │                  │                    │    score = dot(q_vec, d_vec)        │
+     │                  │                    │            ─────────────────        │
+     │                  │                    │            |q_vec| × |d_vec|        │
+     │                  │                    │                  │                  │
+     │                  │                    │  sort by score DESC                 │
+     │                  │                    │  take top 6 docs                    │
+     │                  │                    │                  │                  │
+     │                  │              [6] Build LLM prompt                        │
+     │                  │                    │                  │                  │
+     │                  │                    │  System: "You are a RAG assistant.  │
+     │                  │                    │   Answer using ONLY these docs."    │
+     │                  │                    │                  │                  │
+     │                  │                    │  Context:                           │
+     │                  │                    │   [DOC-1] GDPR Retention Policy     │
+     │                  │                    │   "Data must be deleted after..."   │
+     │                  │                    │   [DOC-2] ISO27001 Status FY2026    │
+     │                  │                    │   "Audit completed, gap in..."      │
+     │                  │                    │   ... (× 6 docs total)              │
+     │                  │                    │                  │                  │
+     │                  │                    │  User: "What is our GDPR policy?"   │
+     │                  │                    │                  │                  │
+     │                  │              [7] Call LLM ─────────────────────────────►│
+     │                  │                    │   POST /chat/completions            │
+     │                  │                    │   model: gpt-4o-mini                │
+     │                  │                    │◄──── "Based on [DOC-1], data ──────│
+     │                  │                    │       must be retained for 7 years  │
+     │                  │                    │       per Article 5(1)(e)..."       │
+     │                  │                    │                  │                  │
+     │                  │              [8] Save to audit log ───►                  │
+     │                  │                    │   INSERT audit_logs(                │
+     │                  │                    │     user_id, query, answer,         │
+     │                  │                    │     confidence=0.89, sources=[1,4]) │
+     │                  │                    │◄── OK ───────────│                  │
+     │                  │                    │                  │                  │
+     │                  │◄── 200 OK ─────────│                  │                  │
+     │                  │  {                 │                  │                  │
+     │                  │    answer: "...",  │                  │                  │
+     │                  │    sources: [      │                  │                  │
+     │                  │      {id:1,        │                  │                  │
+     │                  │       title:"GDPR",│                  │                  │
+     │                  │       snippet:"...",                  │                  │
+     │                  │       score:0.89}, │                  │                  │
+     │                  │      {id:4,...}],  │                  │                  │
+     │                  │    confidence:0.89 │                  │                  │
+     │                  │  }                 │                  │                  │
+     │                  │                    │                  │                  │
+     │◄── render answer │                    │                  │                  │
+     │    + citations   │                    │                  │                  │
+     │    + "Why This   │                    │                  │                  │
+     │     Answer?" ───│                    │                  │                  │
+```
+
+---
+
+### Diagram 3 — Application Startup Sequence
+
+```
+  Developer                  Terminal                  FastAPI (main.py)        SQLite
+      │                          │                            │                    │
+      │── python -m uvicorn ────►│                            │                    │
+      │   app.main:app --port 8001                            │                    │
+      │                          │                            │                    │
+      │                          │── import app ─────────────►│                    │
+      │                          │                            │  load config.py    │
+      │                          │                            │  read backend/.env │
+      │                          │                            │  OPENROUTER_API_KEY│
+      │                          │                            │  JWT_SECRET, etc.  │
+      │                          │                            │                    │
+      │                          │                            │── init_db() ───────►│
+      │                          │                            │  CREATE TABLE IF   │
+      │                          │                            │  NOT EXISTS ...    │
+      │                          │                            │◄── tables ready ───│
+      │                          │                            │                    │
+      │                          │                            │── seed_if_empty() ─►│
+      │                          │                            │  SELECT COUNT(*)   │
+      │                          │                            │  FROM users        │
+      │                          │                            │◄── count = 0 ──────│
+      │                          │                            │                    │
+      │                          │                            │  (first run only)  │
+      │                          │                            │── INSERT user ─────►│
+      │                          │                            │  admin@gmail.com   │
+      │                          │                            │  bcrypt(admin123)  │
+      │                          │                            │  role: admin       │
+      │                          │                            │◄── OK ─────────────│
+      │                          │                            │                    │
+      │                          │◄── "Application startup    │                    │
+      │                          │     complete" log          │                    │
+      │                          │                            │                    │
+      │                          │  Uvicorn listening on      │                    │
+      │◄── ready ────────────────│  http://0.0.0.0:8001       │                    │
+```
+
+---
 
 ### Technology Stack
 
-**Backend (FastAPI)**
-- **Framework:** FastAPI 0.115 + Uvicorn ASGI server
-- **Database:** SQLite (dev) with SQLAlchemy 2 ORM
-- **Authentication:** JWT HS256 tokens (480 min expiry) + bcrypt password hashing
-- **Embeddings:** OpenRouter `text-embedding-3-small` (1536-dim)
-- **LLM:** OpenRouter `gpt-4o-mini`
-- **Retrieval:** Semantic similarity (cosine) on embeddings, top-6 docs
-- **Cache:** In-process embedding cache (invalidated on CRUD)
-
-**Frontend (React + TypeScript)**
-- **Framework:** Vite 7 + React 18 + TypeScript 5
-- **Styling:** CSS variables with golden/amber theme
-- **State:** React hooks (no external state management)
-- **API Client:** Fetch API with TypeScript types
+| Layer | Technology | Version | Purpose |
+|-------|-----------|---------|---------|
+| Frontend framework | React + TypeScript | 18 / 5 | SPA, component rendering |
+| Build tool | Vite | 7 | Dev server (HMR), production bundle |
+| Styling | CSS Custom Properties | — | Golden/amber theme, no CSS framework |
+| HTTP client | Fetch API | browser native | JWT-attached REST calls |
+| Backend framework | FastAPI + Uvicorn | 0.115 | ASGI, auto OpenAPI docs |
+| Language | Python | 3.13 | Backend runtime |
+| ORM | SQLAlchemy | 2 | DB models, session management |
+| Database | SQLite | 3 | File-based DB (`backend/rag.db`) |
+| Auth | JWT HS256 + bcrypt | — | Stateless tokens, 480 min expiry |
+| Embedding model | text-embedding-3-small | — | 1536-dim semantic vectors |
+| LLM | gpt-4o-mini | — | Cited answer generation, 128K ctx |
+| AI gateway | OpenRouter | — | Unified API for LLM + embeddings |
+| Similarity search | Cosine (in-process) | — | Pure Python, no vector DB needed |
+| Embed cache | Python `dict` | — | Skip re-embedding unchanged docs |
 
 ### Key Features
-✅ Semantic retrieval with AI embeddings  
-✅ Cited answers with source document references  
-✅ Confidence scoring (0.0-1.0 cosine similarity)  
-✅ "Why This Answer?" explainability panel  
-✅ Admin audit log of all queries  
-✅ User + Admin KB document management  
-✅ JWT authentication with role-based UI  
-✅ Auto-seeded admin user on startup  
+
+| Feature | How It Works |
+|---------|-------------|
+| 🔍 Semantic Search | Query and docs both embedded to 1536-dim vectors; cosine distance used — not keyword matching |
+| 📎 Cited Answers | GPT-4o-mini receives doc IDs in prompt; response references `[DOC-N]` labels |
+| 📊 Confidence Score | Top document's cosine similarity score (0.0–1.0) returned with every response |
+| 🔎 Why This Answer? | UI panel shows all 6 retrieved docs, their titles, snippets, and individual scores |
+| 🛡️ JWT Auth | HS256 signed token; each API request validated server-side; 401 on expiry |
+| 👥 Role-Based UI | Admin sees audit log + manage-all-docs; intern sees chat + own docs only |
+| 📝 Audit Log | Every `/chat` call stored with user, query, answer, confidence, and source IDs |
+| ⚡ Embedding Cache | `_embed_cache: dict[int, list[float]]` in `chat.py`; cleared on backend restart |
+| 🌱 Auto-Seed Admin | `seed_if_empty()` runs at startup; idempotent — safe to restart multiple times |
 
 ---
 
