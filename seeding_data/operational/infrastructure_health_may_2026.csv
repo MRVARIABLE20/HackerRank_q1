@@ -1,0 +1,29 @@
+Metric,Value,SLO_Target,Status,Notes
+Platform Availability (30-day),99.97%,99.9%,PASS,No incidents in May 2026
+API p95 Latency,204ms,<250ms,PASS,7-day rolling average
+API p99 Latency,338ms,<500ms,PASS,7-day rolling average
+Chat Endpoint p95,1840ms,<3000ms,PASS,Includes embedding + LLM latency
+Error Rate (5xx),0.58%,<1%,PASS,May 1-14 average
+DB Query p95,12ms,<50ms,PASS,SQLite dev / PG staging
+Cache Hit Rate,94.2%,>80%,PASS,Embedding cache; resets on restart
+Active Users (DAU),847,—,INFO,Rolling 7-day average
+Total KB Documents,13,—,INFO,Seeded as of 2026-05-14
+Total Queries (May),4821,—,INFO,Chat queries month-to-date
+Avg Confidence Score,0.64,>0.5,PASS,Across all May queries
+Low Confidence Queries (<0.4),8.3%,<15%,PASS,Mostly out-of-scope questions
+CPU Utilisation (avg),31%,<70%,PASS,Backend pod average
+Memory Utilisation,58%,<80%,PASS,Backend pod average
+Disk Utilisation,22%,<75%,PASS,Database + logs
+OpenRouter API Latency,312ms,<500ms,PASS,Embedding calls
+OpenRouter API Error Rate,0.1%,<1%,PASS,Mostly transient timeouts
+Backup Last Completed,2026-05-14T02:00Z,Daily,PASS,Encrypted AES-256-GCM
+DR Test Last Passed,2026-02-20,Quarterly,PASS,3h 42min recovery time
+Pending Security Vulnerabilities (High+),0,0,PASS,Last scan 2026-04-30
+MFA Compliance,98.7%,>95%,PASS,3 legacy service accounts in migration
+SSL Certificate Expiry,2026-11-30,>30 days,PASS,Auto-renew via Let's Encrypt
+Dependency Outdated Packages,14,<20,PASS,None with known CVEs
+Last Pentest Finding (High),0 open,0,PASS,All patched as of 2026-03-25
+On-call Coverage,100%,100%,PASS,PagerDuty schedule fully staffed
+Incident MTTR (SEV-2, 30-day),47min,<60min,PASS,1 SEV-2 in May (API timeout)
+Change Failure Rate,0%,<5%,PASS,3 deployments in May, all clean
+Deployment Frequency,3 in May,Weekly+,PASS,CI/CD pipeline green

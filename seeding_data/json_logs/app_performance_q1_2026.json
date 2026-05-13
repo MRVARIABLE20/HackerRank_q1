@@ -1,0 +1,75 @@
+{
+  "report_period": "Q1 2026",
+  "generated_at": "2026-04-01T00:00:00Z",
+  "environment": "production",
+  "summary": {
+    "total_requests": 18472930,
+    "successful_requests": 18359412,
+    "error_requests": 113518,
+    "error_rate_pct": 0.61,
+    "avg_response_time_ms": 142,
+    "p95_response_time_ms": 387,
+    "p99_response_time_ms": 821,
+    "uptime_pct": 99.97
+  },
+  "monthly_breakdown": [
+    {
+      "month": "January 2026",
+      "requests": 5841200,
+      "errors": 38900,
+      "error_rate_pct": 0.67,
+      "avg_response_ms": 138,
+      "p95_ms": 362,
+      "peak_rps": 3410,
+      "incidents": 1
+    },
+    {
+      "month": "February 2026",
+      "requests": 6012300,
+      "errors": 35100,
+      "error_rate_pct": 0.58,
+      "avg_response_ms": 145,
+      "p95_ms": 395,
+      "peak_rps": 3720,
+      "incidents": 0
+    },
+    {
+      "month": "March 2026",
+      "requests": 6619430,
+      "errors": 39518,
+      "error_rate_pct": 0.60,
+      "avg_response_ms": 144,
+      "p95_ms": 401,
+      "peak_rps": 4105,
+      "incidents": 1
+    }
+  ],
+  "service_slos": {
+    "availability_target_pct": 99.9,
+    "availability_actual_pct": 99.97,
+    "latency_p95_target_ms": 400,
+    "latency_p95_actual_ms": 387,
+    "error_rate_target_pct": 1.0,
+    "error_rate_actual_pct": 0.61,
+    "slo_status": "ALL_GREEN"
+  },
+  "top_slow_endpoints": [
+    { "endpoint": "/api/v1/reports/generate", "avg_ms": 1840, "p99_ms": 4200, "calls": 22400 },
+    { "endpoint": "/api/v1/analytics/export", "avg_ms": 1420, "p99_ms": 3800, "calls": 15600 },
+    { "endpoint": "/api/v1/kb/search", "avg_ms": 380, "p99_ms": 920, "calls": 891000 }
+  ],
+  "error_breakdown": [
+    { "code": 500, "count": 41200, "top_cause": "Database timeout on reporting queries" },
+    { "code": 503, "count": 28900, "top_cause": "Upstream AI service rate limit" },
+    { "code": 429, "count": 24300, "top_cause": "Client rate limit exceeded" },
+    { "code": 404, "count": 19118, "top_cause": "Deprecated API endpoint access" }
+  ],
+  "infrastructure": {
+    "region": "us-east-1",
+    "app_servers": 12,
+    "db_read_replicas": 3,
+    "cdn_hit_rate_pct": 78.4,
+    "avg_cpu_pct": 34,
+    "avg_memory_pct": 61
+  }
+}

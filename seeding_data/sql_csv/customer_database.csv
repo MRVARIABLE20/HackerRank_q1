@@ -1,0 +1,26 @@
+Customer_ID,Company,Tier,ARR_USD,Industry,Region,Health_Score,CSM,Renewal_Date,Churn_Risk
+C-0001,Temasek Holdings,Enterprise,380000,Financial Services,APAC,92,Sarah Wong,2026-09-30,Low
+C-0002,Deutsche Telekom AG,Enterprise,295000,Technology,EMEA,87,Marco Bauer,2026-11-15,Low
+C-0003,First National Bank,Enterprise,260000,Financial Services,Americas,74,James Carter,2026-07-31,Medium
+C-0004,Meridian Health Group,Enterprise,240000,Healthcare,Americas,81,Lisa Nguyen,2026-10-01,Low
+C-0005,Axiom Logistics,Mid-Market,135000,Supply Chain,Americas,68,Rachel Kim,2026-08-15,Medium
+C-0006,NovaTech Systems,Mid-Market,118000,Technology,APAC,91,David Lim,2026-12-31,Low
+C-0007,Stellar Insurance Co,Mid-Market,105000,Insurance,Americas,62,James Carter,2026-06-30,High
+C-0008,Cascadia Power,Mid-Market,98000,Energy,Americas,77,Rachel Kim,2026-09-01,Low
+C-0009,Pharma Nexus Ltd,Mid-Market,89000,Pharmaceutical,EMEA,83,Marco Bauer,2026-10-15,Low
+C-0010,Apex Retail Group,SMB,47000,Retail,Americas,55,Lisa Nguyen,2026-07-01,High
+C-0011,GreenLeaf Organics,SMB,32000,Agriculture,Americas,70,Sarah Wong,2026-08-31,Medium
+C-0012,BlueSky Aviation,Enterprise,315000,Aviation,EMEA,88,Marco Bauer,2026-12-01,Low
+C-0013,Pacific Rim Trading,Mid-Market,112000,Trade,APAC,73,David Lim,2026-09-15,Medium
+C-0014,UrbanCore Realty,SMB,28000,Real Estate,Americas,49,James Carter,2026-05-31,High
+C-0015,Vertex Analytics,Mid-Market,95000,Analytics,Americas,84,Rachel Kim,2026-11-30,Low
+C-0016,OmniRetail Corp,Enterprise,210000,Retail,APAC,78,Sarah Wong,2026-10-31,Low
+C-0017,Northern Rail,Mid-Market,127000,Transportation,EMEA,66,Marco Bauer,2026-08-01,Medium
+C-0018,SkyNet Telecom,Enterprise,275000,Telecom,Americas,90,Lisa Nguyen,2026-12-15,Low
+C-0019,Harvest Financial,Mid-Market,103000,Financial Services,Americas,61,Rachel Kim,2026-07-15,High
+C-0020,Pinnacle Hotels,SMB,41000,Hospitality,APAC,72,David Lim,2026-09-30,Medium
+C-0021,CloudBase AI,Mid-Market,155000,Technology,Americas,95,Sarah Wong,2026-11-01,Low
+C-0022,Titan Manufacturing,Enterprise,230000,Manufacturing,EMEA,71,Marco Bauer,2026-10-01,Medium
+C-0023,Omega Pharma,Enterprise,290000,Pharmaceutical,Americas,85,Lisa Nguyen,2026-12-31,Low
+C-0024,Redwood Credit Union,SMB,38000,Financial Services,Americas,58,James Carter,2026-06-15,High
+C-0025,SunBurst Energy,Mid-Market,142000,Energy,Americas,79,Rachel Kim,2026-09-01,Low

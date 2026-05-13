@@ -1,0 +1,78 @@
+{
+  "audit_period": "April 2026",
+  "generated_at": "2026-05-01T08:00:00Z",
+  "auditor": "security-automation@company.com",
+  "summary": {
+    "total_events": 284710,
+    "critical_events": 3,
+    "high_events": 17,
+    "medium_events": 142,
+    "low_events": 284548,
+    "resolved": 159,
+    "open": 3,
+    "false_positives": 1
+  },
+  "critical_events": [
+    {
+      "event_id": "EVT-C-0041",
+      "timestamp": "2026-04-07T02:14:33Z",
+      "type": "BRUTE_FORCE_ATTEMPT",
+      "source_ip": "203.0.113.42",
+      "target": "admin portal",
+      "attempts": 847,
+      "outcome": "BLOCKED",
+      "action_taken": "IP banned for 24h, alert sent to SIEM",
+      "resolved": true
+    },
+    {
+      "event_id": "EVT-C-0099",
+      "timestamp": "2026-04-15T18:42:11Z",
+      "type": "PRIVILEGE_ESCALATION_ATTEMPT",
+      "source_user": "contractor_temp_03",
+      "target_resource": "production database",
+      "outcome": "BLOCKED",
+      "action_taken": "Account suspended, IR team notified",
+      "resolved": true
+    },
+    {
+      "event_id": "EVT-C-0178",
+      "timestamp": "2026-04-22T09:05:47Z",
+      "type": "DATA_EXFILTRATION_ALERT",
+      "source_user": "api_service_account_07",
+      "bytes_transferred": 2400000000,
+      "destination": "external-bucket-xfilter.s3.amazonaws.com",
+      "outcome": "FLAGGED",
+      "action_taken": "Transfer halted, forensic investigation open",
+      "resolved": false
+    }
+  ],
+  "high_events_summary": [
+    { "type": "FAILED_MFA_SPIKE", "count": 6, "most_recent": "2026-04-29T14:00:00Z", "status": "Monitoring" },
+    { "type": "ANOMALOUS_LOGIN_LOCATION", "count": 8, "most_recent": "2026-04-28T09:30:00Z", "status": "Resolved" },
+    { "type": "API_KEY_REUSE_DETECTED", "count": 3, "most_recent": "2026-04-21T16:45:00Z", "status": "Resolved" }
+  ],
+  "access_review": {
+    "total_accounts_reviewed": 1248,
+    "stale_accounts_disabled": 23,
+    "excess_permissions_revoked": 67,
+    "mfa_compliance_pct": 98.7,
+    "privileged_accounts": 42,
+    "service_accounts_rotated": 15
+  },
+  "vulnerability_scan": {
+    "scan_date": "2026-04-30",
+    "critical_vulns": 0,
+    "high_vulns": 2,
+    "medium_vulns": 14,
+    "low_vulns": 89,
+    "patching_sla_met": true,
+    "notes": "2 high vulns patched within SLA window. Next scan scheduled 2026-05-15."
+  },
+  "compliance_checks": {
+    "SOC2_controls_passing": 47,
+    "SOC2_controls_total": 49,
+    "ISO27001_controls_passing": 112,
+    "ISO27001_controls_total": 114,
+    "GDPR_findings": 0
+  }
+}

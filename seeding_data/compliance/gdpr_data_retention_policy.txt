@@ -1,0 +1,72 @@
+GDPR DATA RETENTION POLICY
+Company: Enterprise Intelligence Ltd
+Document ID: COMPLIANCE-GDPR-001
+Classification: INTERNAL
+Department: compliance
+Version: 3.2 | Effective: 2025-01-01 | Next Review: 2026-12-31
+
+1. POLICY PURPOSE
+-----------------
+This policy defines the rules for retaining and deleting personal data in accordance
+with the General Data Protection Regulation (GDPR) Articles 5(1)(e), 13, and 17.
+All data controllers and processors within the company must comply.
+
+2. LEGAL BASIS FOR RETENTION
+-----------------------------
+Personal data may only be retained where one of the following lawful bases applies:
+  a) Consent (Art. 6(1)(a))     — explicit opt-in obtained; withdrawal honoured within 30 days
+  b) Contract (Art. 6(1)(b))    — data necessary to fulfil a contract with the data subject
+  c) Legal obligation (6(1)(c)) — statutory or regulatory requirement to retain
+  d) Legitimate interest (6(1)(f)) — documented LIA completed; override test passed
+
+3. RETENTION SCHEDULES
+-----------------------
+Data Category              | Retention Period  | Basis          | Deletion Method
+---------------------------|-------------------|----------------|------------------
+Customer PII (active)      | Duration + 3 yrs  | Contract       | Secure wipe
+Customer PII (churned)     | 3 years from churn| Legitimate int.| Secure wipe
+Employee records           | 7 years           | Legal (HMRC)   | Shred + wipe
+Financial transaction logs | 7 years           | Legal (AML)    | Secure wipe
+Marketing contact data     | 2 years           | Consent        | Anonymise
+Support tickets (PII)      | 2 years           | Contract       | Anonymise
+Application logs (PII)     | 90 days           | Legitimate int.| Auto-purge
+Security audit logs        | 12 months         | Legitimate int.| Secure wipe
+Website analytics (anon.)  | 26 months         | Legitimate int.| Aggregation
+Backup copies (encrypted)  | +30 days lag      | Legal/Contract | Purge on schedule
+
+4. DATA SUBJECT RIGHTS
+-----------------------
+Right to Erasure (Art. 17): Requests fulfilled within 30 days unless legal hold applies.
+Right of Access (Art. 15):  Subject Access Requests fulfilled within 30 days.
+Right to Rectification:     Corrections processed within 72 hours.
+Right to Portability:       Data exported in JSON/CSV format on request.
+
+5. CROSS-BORDER TRANSFERS
+--------------------------
+Personal data may only be transferred outside the EEA where:
+  - Adequacy decision exists (Art. 45), OR
+  - Standard Contractual Clauses (SCCs) are in place (Art. 46), OR
+  - Binding Corporate Rules approved by lead DPA
+
+Current approved transfer mechanisms:
+  - US: AWS us-east-1 — SCCs (2021 version) signed with AWS Ireland
+  - UK: UK GDPR adequacy confirmed; same SCCs applied
+
+6. BREACH NOTIFICATION
+-----------------------
+Suspected breaches must be reported to DPO within 2 hours of discovery.
+DPO reports to ICO within 72 hours if risk to data subjects is likely.
+Affected data subjects notified without undue delay if high risk.
+All breach events logged in the incident register (ref. INC-GDPR-*).
+
+7. COMPLIANCE CONTACTS
+-----------------------
+Data Protection Officer: dpo@enterprise-intelligence.com
+Legal Counsel:           legal@enterprise-intelligence.com
+Security Team:           security@enterprise-intelligence.com
+
+8. POLICY VIOLATIONS
+---------------------
+Non-compliance may result in disciplinary action up to and including dismissal.
+Regulatory fines under GDPR can reach €20M or 4% of global annual turnover.
+Last reviewed by DPO: 2025-11-15 | Approved by: Board of Directors

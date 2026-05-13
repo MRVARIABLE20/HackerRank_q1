@@ -1,0 +1,151 @@
+API REFERENCE v1.0 — Enterprise RAG Intelligence Platform
+==========================================================
+Document Classification: INTERNAL
+Department: engineering
+Last Updated: 2026-03-01
+
+BASE URL
+--------
+Production:    https://api.enterprise-rag.io/v1
+Staging:       https://staging.api.enterprise-rag.io/v1
+Local Dev:     http://localhost:8001
+
+
+AUTHENTICATION
+--------------
+All endpoints (except /auth/login and /auth/signup) require a Bearer token.
+
+POST /auth/login
+  Body:    { "email": string, "password": string }
+  Returns: { "access_token": string, "token_type": "bearer" }
+  Notes:   Token expires per JWT_EXP_MINUTES setting (default 480 min).
+
+POST /auth/signup
+  Body:    { "email": string, "password": string, "full_name"?: string }
+  Returns: { "access_token": string, "token_type": "bearer" }
+  Notes:   Default role: intern. Admins may promote via admin panel.
+
+
+CHAT ENDPOINT
+-------------
+POST /chat
+  Auth:    Bearer token required
+  Body:    { "query": string }
+  Returns:
+    {
+      "answer": string,
+      "citations": [
+        {
+          "doc_id": int,
+          "title": string,
+          "snippet": string,
+          "score": float,        // cosine similarity 0.0-1.0
+          "category": string,
+          "classification": string,
+          "department": string,
+          "page": int|null
+        }
+      ],
+      "confidence": float,       // top-doc cosine similarity
+      "trace_id": string,        // UUID for audit correlation
+      "router_decision": {
+        "strategy": "semantic_embedding",
+        "model": "openai/text-embedding-3-small",
+        "k": int,
+        "top_score": float,
+        "scores": float[]
+      },
+      "verifier_verdict": object,
+      "denied_doc_count": int    // always 0; reserved for future RBAC
+    }
+  Errors:
+    401 Unauthorized — invalid/expired token
+    422 Unprocessable — missing query field
+    503 Service Unavailable — embedding or LLM service unreachable
+
+  Notes:
+    - Retrieves top-6 semantically similar KB documents
+    - LLM: openai/gpt-4o-mini via OpenRouter
+    - Embedding: openai/text-embedding-3-small (1536-dim)
+    - Embeddings are cached in-process; cache invalidated on CRUD
+
+
+KNOWLEDGE BASE ENDPOINTS
+-------------------------
+GET /kb/docs
+  Auth:    Bearer token
+  Query:   ?category=<category>   (optional filter)
+  Returns: Array of KBDocOut objects
+
+POST /kb/docs
+  Auth:    Bearer token
+  Body:    { "category": string, "title": string, "content": string }
+  Returns: KBDocOut
+  Notes:   Content max 50,000 characters.
+
+DELETE /kb/docs/{id}
+  Auth:    Bearer token (own docs) or admin (any doc)
+  Returns: { "deleted": true }
+
+
+ADMIN ENDPOINTS (admin/auditor roles only)
+------------------------------------------
+GET    /admin/docs              — list all KB docs
+POST   /admin/docs              — create KB doc
+PATCH  /admin/docs/{id}         — update title/content/category
+DELETE /admin/docs/{id}         — delete any doc
+
+GET /admin/audit-log
+  Auth:    Admin/auditor only
+  Returns: Array of AuditLog entries
+    {
+      "id": int, "ts": string, "user_email": string,
+      "user_roles": string[], "query": string,
+      "retrieved_doc_ids": int[], "denied_doc_count": int,
+      "confidence": float, "trace_id": string
+    }
+
+
+VALID CATEGORIES
+----------------
+  pdfs        — PDFs and internal documents
+  sql_csv     — SQL/CSV datasets
+  json_logs   — JSON logs and audit trails
+  technical   — Technical documentation
+  compliance  — Compliance records
+  operational — Operational datasets
+
+
+RATE LIMITS
+-----------
+  /chat endpoint:   20 req/min per user
+  Other endpoints:  120 req/min per user
+  Headers: X-RateLimit-Remaining, X-RateLimit-Reset
+
+
+ERROR FORMAT
+------------
+  All errors return:
+    { "detail": string }
+  HTTP codes: 400, 401, 403, 404, 422, 429, 500, 503
+
+
+SDK EXAMPLES
+------------
+Python (requests):
+  import requests
+  s = requests.Session()
+  tok = s.post("http://localhost:8001/auth/login",
+               json={"email":"admin@gmail.com","password":"admin123"}).json()["access_token"]
+  s.headers["Authorization"] = f"Bearer {tok}"
+  resp = s.post("http://localhost:8001/chat", json={"query":"What is our GDPR retention policy?"})
+  print(resp.json()["answer"])
+
+curl:
+  TOKEN=$(curl -s -X POST http://localhost:8001/auth/login \
+    -H "Content-Type: application/json" \
+    -d '{"email":"admin@gmail.com","password":"admin123"}' | jq -r .access_token)
+  curl -X POST http://localhost:8001/chat \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"query":"Summarise Q1 2026 sales performance"}'

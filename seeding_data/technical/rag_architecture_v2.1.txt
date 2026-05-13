@@ -1,0 +1,122 @@
+RAG ARCHITECTURE OVERVIEW v2.1
+Enterprise RAG Intelligence Platform
+======================================
+Document Classification: INTERNAL
+Department: engineering
+Last Updated: 2026-02-15
+
+1. SYSTEM OVERVIEW
+------------------
+The Enterprise RAG (Retrieval-Augmented Generation) system enables employees to query
+internal knowledge bases using natural language. It combines semantic retrieval with
+large language model generation to produce cited, grounded answers.
+
+Core pipeline:
+  User Query → Embedding → Similarity Search → Context Assembly → LLM → Cited Answer
+
+
+2. RETRIEVAL LAYER
+------------------
+Model:     openai/text-embedding-3-small (via OpenRouter API)
+Dimension: 1536
+Strategy:  Dense cosine similarity (semantic embeddings)
+Top-K:     6 documents retrieved per query
+Cache:     In-process Python dict keyed by KBDocument.id
+           Cache is invalidated on document create/update/delete
+
+Embedding flow:
+  1. Query text → POST /embeddings (OpenRouter)
+  2. All uncached KB docs embedded in same API call (batch up to 100)
+  3. Cosine similarity computed for each doc
+  4. Top-6 docs selected by score; passed as context to LLM
+
+Confidence score:
+  confidence = cosine_similarity(query_embedding, best_doc_embedding)
+  Range: 0.0–1.0  (>0.7 = high, 0.4–0.7 = medium, <0.4 = low)
+
+
+3. GENERATION LAYER
+-------------------
+Model:       openai/gpt-4o-mini (via OpenRouter API)
+Temperature: 0.2
+Max tokens:  1024
+Prompt:      System prompt injects retrieved context with doc IDs
+             LLM instructed to cite [doc:<id>] inline
+             LLM instructed to answer only from context, not hallucinate
+
+System prompt structure:
+  "You are an enterprise intelligence assistant. Answer using ONLY the
+   provided context. Cite sources as [doc:<id>]. If the answer is not
+   in the context, say so clearly."
+
+
+4. DATA LAYER
+-------------
+Database:    SQLite (dev) / PostgreSQL (prod)
+ORM:         SQLAlchemy 2 with mapped columns
+Key tables:
+  kb_documents     — knowledge base documents (title, content, category)
+  audit_log        — every chat query logged with confidence + trace_id
+  users            — user accounts with bcrypt password hashes
+  roles            — role definitions (intern/analyst/manager/admin/auditor)
+  user_roles       — many-to-many user ↔ role assignments
+
+KB document limits:
+  content max:  50,000 characters
+  categories:   pdfs, sql_csv, json_logs, technical, compliance, operational
+
+
+5. SECURITY LAYER
+-----------------
+Auth:        JWT HS256 tokens (python-jose)
+Expiry:      480 minutes (configurable via JWT_EXP_MINUTES)
+Passwords:   bcrypt hashed (passlib)
+CORS:        Explicit origins whitelist in backend/.env
+API keys:    Stored in .env, never logged
+
+Note on RBAC:
+  Role-based access control for document filtering is PLANNED but not yet
+  implemented. Currently all authenticated users have access to all KB documents.
+  The denied_doc_count field in chat responses is always 0.
+
+
+6. INFRASTRUCTURE
+-----------------
+Backend:     FastAPI 0.115 + Uvicorn
+Frontend:    Vite 7 + React 18 + TypeScript 5
+Embedding:   OpenRouter (openai/text-embedding-3-small)
+LLM:         OpenRouter (openai/gpt-4o-mini)
+Dev ports:   Backend :8001, Frontend :5173
+
+Environment variables (backend/.env):
+  DATABASE_URL_OVERRIDE   — SQLite file path (dev) or PostgreSQL URL (prod)
+  OPENROUTER_API_KEY      — API key for embeddings + LLM calls
+  OPENROUTER_MODEL        — LLM model identifier
+  JWT_SECRET              — Token signing key (rotate in prod)
+  JWT_EXP_MINUTES         — Token lifetime
+  CORS_ORIGINS            — Comma-separated allowed origins
+
+
+7. PERFORMANCE CHARACTERISTICS
+-------------------------------
+Embedding latency:    ~300–600ms per query (OpenRouter)
+LLM latency:          ~800–2000ms per response (OpenRouter)
+Total query latency:  ~1.5–3s end-to-end
+Cache hit ratio:      ~95% after initial warm-up
+Context window used:  ~2000–4000 tokens per query (6 docs × ~512 chars)
+
+
+8. KNOWN LIMITATIONS & ROADMAP
+-------------------------------
+Current limitations:
+  - No document chunking: documents >2000 chars use first 512 chars only
+  - No re-ranking: pure cosine similarity, no cross-encoder re-rank
+  - In-memory cache: lost on process restart
+  - SQLite: single-writer, not suitable for high-concurrency production
+
+Roadmap (v2.2):
+  - [ ] Persistent vector store (pgvector or Qdrant)
+  - [ ] Document chunking with sliding window
+  - [ ] Cross-encoder re-ranking (Cohere rerank-3)
+  - [ ] True RBAC document filtering
+  - [ ] Streaming LLM responses via SSE

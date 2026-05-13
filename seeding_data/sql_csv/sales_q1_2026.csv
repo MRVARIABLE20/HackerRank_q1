@@ -1,0 +1,19 @@
+Quarter,Month,Region,Product_Line,Sales_Rep,Deal_ID,ARR_USD,Stage,Close_Date,Industry,Notes
+Q1-2026,January,Americas,Platform,Alice Monroe,D-1001,85000,Closed-Won,2026-01-08,Technology,Upsell from SMB
+Q1-2026,January,EMEA,Analytics,Hans Richter,D-1002,120000,Closed-Won,2026-01-12,Financial Services,New logo
+Q1-2026,January,APAC,Platform,Wei Zhang,D-1003,45000,Closed-Won,2026-01-19,Healthcare,Renewal expansion
+Q1-2026,January,Americas,Professional Services,Alice Monroe,D-1004,30000,Closed-Won,2026-01-25,Retail,Implementation project
+Q1-2026,January,EMEA,Platform,Sophie Martin,D-1005,210000,Closed-Won,2026-01-29,Insurance,Enterprise new logo
+Q1-2026,February,Americas,Analytics,Bob Chen,D-1006,67000,Closed-Won,2026-02-04,Technology,Mid-market expansion
+Q1-2026,February,APAC,Platform,Wei Zhang,D-1007,155000,Closed-Won,2026-02-10,Financial Services,Enterprise new logo
+Q1-2026,February,EMEA,Professional Services,Hans Richter,D-1008,22000,Closed-Won,2026-02-14,Manufacturing,PS add-on
+Q1-2026,February,Americas,Platform,Alice Monroe,D-1009,95000,Closed-Won,2026-02-20,Healthcare,Renewal flat
+Q1-2026,February,Americas,Analytics,Bob Chen,D-1010,48000,Closed-Won,2026-02-26,Retail,New logo SMB
+Q1-2026,March,EMEA,Platform,Sophie Martin,D-1011,320000,Closed-Won,2026-03-03,Banking,Enterprise expansion
+Q1-2026,March,Americas,Platform,Alice Monroe,D-1012,75000,Closed-Won,2026-03-09,Technology,Mid-market new logo
+Q1-2026,March,APAC,Analytics,Wei Zhang,D-1013,185000,Closed-Won,2026-03-15,Pharmaceutical,Enterprise new logo
+Q1-2026,March,Americas,Professional Services,Bob Chen,D-1014,18000,Closed-Won,2026-03-20,Education,Training package
+Q1-2026,March,EMEA,Analytics,Hans Richter,D-1015,140000,Closed-Won,2026-03-25,Technology,Upsell enterprise
+Q1-2026,March,Americas,Platform,Alice Monroe,D-1016,260000,Closed-Won,2026-03-28,Financial Services,Strategic enterprise
+Q1-2026,March,APAC,Platform,Wei Zhang,D-1017,90000,Closed-Won,2026-03-30,Supply Chain,Mid-market new
+Q1-2026,March,Americas,Analytics,Bob Chen,D-1018,55000,Closed-Won,2026-03-31,Healthcare,End of quarter push

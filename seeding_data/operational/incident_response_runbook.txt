@@ -1,0 +1,118 @@
+INCIDENT RESPONSE RUNBOOK v4.1
+================================
+Document: OPS-INC-001
+Classification: INTERNAL
+Department: operations
+Owner: Platform Operations Team
+Last Updated: 2026-01-15
+
+PURPOSE
+-------
+This runbook defines the step-by-step response procedures for production incidents.
+All on-call engineers must be familiar with this runbook before taking shifts.
+
+
+SEVERITY LEVELS
+---------------
+SEV-1 (Critical):  Complete outage or data loss. SLA: Respond within 15 min.
+                   Examples: DB unresponsive, auth service down, mass data breach
+SEV-2 (High):      Major feature unavailable, >25% error rate. SLA: 30 min.
+                   Examples: Chat endpoint 503, embedding service timeout
+SEV-3 (Medium):    Partial degradation, <25% error rate. SLA: 2 hours.
+                   Examples: Slow queries, elevated latency on single region
+SEV-4 (Low):       Minor issues, no user impact. SLA: Next business day.
+                   Examples: Cosmetic UI bug, flaky test in CI
+
+
+INCIDENT COMMAND STRUCTURE
+---------------------------
+Incident Commander (IC):    Owns the response, drives decisions
+Technical Lead (TL):        Investigates root cause, applies fixes
+Comms Lead:                 Updates stakeholders and status page
+Scribe:                     Documents timeline in incident ticket
+
+For SEV-1/SEV-2: Page IC + TL via PagerDuty immediately.
+For SEV-3:       Create ticket, notify team in #incidents Slack channel.
+For SEV-4:       Create ticket, assign in next sprint planning.
+
+
+RESPONSE PROCEDURES
+--------------------
+
+== SEV-1 Response ==
+T+0:   Incident declared. IC paged. Status page updated: "Investigating".
+T+5:   IC bridges in TL and Comms Lead. Bridge URL: meet.enterprise-rag.io/incident
+T+10:  IC assigns roles. TL begins diagnosis. Comms drafts stakeholder message.
+T+15:  First internal update to leadership (email: incident-leads@company.com).
+T+30:  External status page update if customer-visible. Template: see §COMMS.
+T+45:  Escalate to CTO if no resolution path identified.
+Every 30 min: Status updates until resolved.
+Resolution: Post-mortem scheduled within 48h. Blameless culture.
+
+== SEV-2 Response ==
+T+0:   Incident declared. On-call notified via PagerDuty.
+T+15:  TL begins investigation. Slack thread in #incidents.
+T+30:  IC reviews progress; decides whether to escalate to SEV-1.
+T+60:  Update in #incidents. Escalate if no fix path.
+Resolution: Post-mortem within 1 week.
+
+== Common Runbooks ==
+
+RUNBOOK: High Error Rate (>10% 5xx)
+  1. Check Datadog dashboard: https://app.datadoghq.com/dashboard/prod-errors
+  2. Identify which endpoint: GET /admin/audit-log vs POST /chat vs /auth/*
+  3. Check app logs: `kubectl logs -n prod deployment/backend --tail=200`
+  4. Check DB health: `psql $DATABASE_URL -c "SELECT 1;"` (should return in <100ms)
+  5. Check OpenRouter status: https://status.openrouter.ai
+  6. If DB timeout: scale read replicas, check slow query log
+  7. If OpenRouter down: implement fallback (keyword search mode)
+  8. Rollback if new deploy caused issue: `kubectl rollout undo deployment/backend`
+
+RUNBOOK: Memory Leak / OOM Crash
+  1. Check pod memory: `kubectl top pods -n prod`
+  2. If >85% memory: rolling restart: `kubectl rollout restart deployment/backend`
+  3. Investigate embedding cache size: check `_embed_cache` dict length via /metrics
+  4. If cache bloated: restart application to clear in-process cache
+
+RUNBOOK: Authentication Failures Spike
+  1. Check /auth/login error rate in Datadog
+  2. If brute-force pattern: check WAF block rules, update rate limits
+  3. Verify JWT_SECRET env var is correctly set in pod secrets
+  4. Check for clock skew (JWT exp validation requires accurate NTP)
+
+
+COMMUNICATION TEMPLATES
+------------------------
+SEV-1 Customer Update (Status Page):
+  "We are currently experiencing an issue with [service]. Our team is actively
+   investigating and working to restore full service. We will provide updates
+   every 30 minutes. We apologise for the inconvenience."
+
+SEV-1 Resolution Notice:
+  "The issue affecting [service] has been resolved as of [time]. All systems are
+   now operating normally. A detailed post-mortem will be published within 48 hours."
+
+
+POST-MORTEM TEMPLATE
+---------------------
+Incident ID:       INC-YYYY-NNN
+Severity:          SEV-X
+Date/Time:         YYYY-MM-DD HH:MM UTC
+Duration:          X hours Y minutes
+Customer Impact:   [describe]
+
+Timeline:          (5-min granularity from detection to resolution)
+Root Cause:        [technical description]
+Contributing:      [list contributing factors]
+Resolution:        [what fixed it]
+Action Items:
+  [ ] Short-term: [immediate fix]    Owner: [team]  Due: [date]
+  [ ] Long-term:  [systemic fix]     Owner: [team]  Due: [date]
+
+ESCALATION CONTACTS
+--------------------
+On-call (PagerDuty):     +1-800-555-0100 (auto-routes to on-call engineer)
+Platform Lead:           platform-oncall@enterprise-rag.io
+Security Incidents:      security@enterprise-rag.io
+Executive Escalation:    cto@enterprise-rag.io (SEV-1 only)
+Status Page Admin:       https://status.enterprise-rag.io/admin
