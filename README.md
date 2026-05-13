@@ -82,15 +82,42 @@ cd HackerRank_q1
 
 ### Step 2 — Backend Setup
 
-#### 2a. Install Python dependencies
+#### 2a. Create a Python virtual environment (recommended)
+
+Using a virtual environment keeps dependencies isolated and avoids conflicts with other Python projects.
+
+```powershell
+# From the HackerRank_q1/ root directory
+python -m venv venv
+
+# Activate it (Windows PowerShell)
+.\venv\Scripts\Activate.ps1
+
+# You should now see (venv) at the start of your prompt:
+# (venv) PS C:\...\HackerRank_q1>
+```
+
+> **Anaconda users:** Use `conda create -n rag python=3.13` then `conda activate rag` instead.
+
+> ⚠️ **If you see a scripts execution error on Windows**, run this once:  
+> `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
+
+#### 2b. Install Python dependencies
 ```powershell
 cd backend
 pip install -r requirements.txt
 ```
 
-#### 2b. Create `backend/.env`
+> This installs ~15 packages including FastAPI, SQLAlchemy, bcrypt, and httpx. Takes 1–2 minutes.
+
+#### 2c. Create `backend/.env`
 
 Create a new file at `backend/.env` with this exact content:
+
+> **How to create a `.env` file on Windows:**  
+> In PowerShell: `New-Item backend\.env -ItemType File`  
+> Then open it: `notepad backend\.env`  
+> Or right-click in File Explorer → New → Text Document → rename to `.env` (remove the `.txt`)
 
 ```env
 # Database — SQLite (default, no setup needed)
@@ -110,7 +137,7 @@ OPENROUTER_MODEL=openai/gpt-4o-mini
 
 > ⚠️ Replace `sk-or-v1-YOUR-KEY-HERE` with the key you created at [openrouter.ai/keys](https://openrouter.ai/keys)
 
-#### 2c. Start the backend
+#### 2d. Start the backend
 ```powershell
 # Run from the backend/ directory
 python -m uvicorn app.main:app --port 8001 --reload
@@ -128,12 +155,16 @@ INFO:     Uvicorn running on http://0.0.0.0:8001
 
 ### Step 3 — Frontend Setup
 
+> 🪟 **Open a NEW terminal window for the frontend.** The backend must keep running in its own terminal. Do not close it.
+
 #### 3a. Install Node dependencies
 ```powershell
-# Open a NEW terminal window, then:
+# In your NEW terminal window:
 cd frontend
 npm install
 ```
+
+> This installs React, Vite, TypeScript and their dependencies (~150 MB in `node_modules/`). Takes 1–2 minutes.
 
 #### 3b. Create `frontend/.env`
 
@@ -754,26 +785,58 @@ sqlite> .quit
 
 ## 🐛 Troubleshooting
 
-### Backend won't start
-- **Check Python version:** `python --version` (need 3.13+)
-- **Check port 8001 availability:** `netstat -ano | findstr :8001`
-- **Verify .env file exists:** `backend/.env` with OpenRouter API key
-- **Check dependencies:** `pip install -r backend/requirements.txt`
+### ❌ `ModuleNotFoundError: No module named 'fastapi'`
+- You forgot to activate the virtual environment, or installed into the wrong Python
+- Fix: `.\.\venv\Scripts\Activate.ps1` then `pip install -r backend/requirements.txt`
+- Verify: `pip show fastapi` should print version info
 
-### Frontend won't start
-- **Check Node version:** `node --version` (need 18+)
-- **Clear node_modules:** `Remove-Item -Recurse frontend\node_modules; cd frontend; npm install`
-- **Check port availability:** Frontend will auto-increment (5173 → 5174 → ...)
+### ❌ `python --version` shows 3.11 or lower
+- The wrong Python is on your PATH
+- Fix (Anaconda): `conda create -n rag python=3.13 -y` then `conda activate rag`
+- Fix (standard): Download Python 3.13 from [python.org](https://www.python.org/downloads/), check "Add to PATH" during install
 
-### No KB documents / empty responses
-- **Check if documents are seeded:** Login → KB page → should see 13 documents
-- **Add documents via UI:** Follow the "Seeding Knowledge Base Documents" section above
-- **Verify OpenRouter API key:** Check backend logs for embedding errors
+### ❌ Backend won't start — port already in use
+```powershell
+# Find what's using port 8001
+netstat -ano | findstr :8001
+# Kill that process (replace 12345 with the PID shown)
+Stop-Process -Id 12345 -Force
+```
 
-### Low confidence scores
-- **Expected for out-of-scope questions:** Confidence <0.4 is normal for unrelated queries
-- **Good score range:** >0.5 indicates relevant document found
-- **Check document content:** Ensure seeded docs match your query topics
+### ❌ `[Errno 2] No such file or directory: 'backend/.env'` or `OPENROUTER_API_KEY is empty`
+- You haven't created `backend/.env` yet
+- Fix: `New-Item backend\.env -ItemType File` then open with `notepad backend\.env` and paste the template from Step 2c above
+
+### ❌ `401 Unauthorized` when calling the API
+- JWT token is missing, expired, or wrong
+- Fix: Log out and log back in — a new token will be issued (valid 480 min)
+- Make sure `frontend/.env` has `VITE_API_URL=http://localhost:8001` (no trailing slash)
+
+### ❌ CORS error in browser console (`Access-Control-Allow-Origin`)
+- Vite is running on a port not listed in `CORS_ORIGINS` in `backend/.env`
+- Fix: Check which port Vite actually started on (look at terminal output), then add it to `CORS_ORIGINS`
+- Example: if Vite is on 5174, add `http://localhost:5174` to the comma-separated list, then restart the backend
+
+### ❌ Frontend blank page or `Failed to fetch`
+- Backend is not running or `VITE_API_URL` is wrong
+- Fix: Confirm backend is running (`curl http://localhost:8001/health` should return `{"status":"ok"}`)
+- Fix: Check `frontend/.env` — value must be `http://localhost:8001` with no trailing slash
+
+### ❌ Chat returns empty answer or very low confidence (< 0.2)
+- No KB documents have been added yet
+- Fix: Follow the **Seeding Knowledge Base Documents** section — add at least a few docs first, then try chat again
+- After adding docs, confidence >0.5 means a relevant document was found
+
+### ❌ `scripts cannot be loaded because running scripts is disabled` (PowerShell)
+- Windows execution policy is blocking the venv activation script
+- Fix (run once as the current user, no admin needed):
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+### ❌ `npm: command not found` or `node: command not found`
+- Node.js is not installed or not on PATH
+- Fix: Download from [nodejs.org](https://nodejs.org/) (LTS version), restart PowerShell after installing
 
 ---
 
@@ -798,36 +861,3 @@ sqlite> .quit
 ## 📄 License
 
 Internal use only - Enterprise Intelligence Ltd
-docker compose -f infra/docker-compose.yml exec api python -m ingestion.run --path /app/data/corpus
-
-# 3. Open the UI
-start http://localhost:3000
-```
-
-### Demo accounts
-
-| Email | Role | Clearance |
-|---|---|---|
-| `intern@corp.com` | intern | public |
-| `analyst@corp.com` | analyst | internal |
-| `manager@corp.com` | manager | confidential |
-| `cfo@corp.com` | cfo | restricted |
-| `admin@corp.com` | admin | restricted (+ audit access) |
-
-Password for all demo accounts: `demo1234` (seeded only — do not use in prod).
-
-## Evaluation
-
-```powershell
-docker compose -f infra/docker-compose.yml exec api python -m evals.run
-```
-
-Reports RAGAS metrics (faithfulness, context_precision, context_recall, answer_relevancy) plus the critical **rbac_violation_rate** which must be `0`.
-
-## Tech choices
-
-- **LangGraph** — explicit stateful DAG; each node = an auditable step (chosen over Semantic Kernel for Python/Gemini fit and ecosystem maturity).
-- **Qdrant** — payload filters enforce RBAC *at the index*, not post-hoc; native dense + sparse hybrid.
-- **Gemini 1.5 Pro / Flash** — Pro for generation, Flash for router/guard/verifier (cost + latency).
-- **FastAPI + SSE** — streaming answers and trace events to the UI.
-- **Next.js 14 + shadcn/ui** — polished chat with citation hover-cards and trace panel.
