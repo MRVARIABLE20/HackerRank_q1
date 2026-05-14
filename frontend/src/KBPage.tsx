@@ -30,6 +30,7 @@ type CatConfig = {
   initialTable?: TableState;
   initialPairs?: KVPair[];
   hint: string;
+  accept?: string; // for file_text inputMode only
   validate: (content: string) => string | null;
 };
 
@@ -38,7 +39,8 @@ const CATEGORIES: CatConfig[] = [
     id: "pdfs", icon: "📄", label: "PDFs & Internal Documents",
     formatTag: "PROSE", formatColor: "fmt-prose", inputMode: "file_text",
     titlePlaceholder: "e.g. Remote Work Policy — 2026",
-    hint: "Upload a .txt file or paste plain document text. Structured headings and paragraphs work best.",
+    accept: ".pdf,.txt,.md",
+    hint: "Upload a .pdf, .txt, or .md file — or paste plain document text. Structured headings and paragraphs work best.",
     validate: (c) => c.trim().length < 40 ? "Content too short — paste the full document text (min 40 chars)." : null,
   },
   {
@@ -68,18 +70,20 @@ const CATEGORIES: CatConfig[] = [
     id: "technical", icon: "🔧", label: "Technical Reports",
     formatTag: "TECHNICAL", formatColor: "fmt-tech", inputMode: "file_text",
     titlePlaceholder: "e.g. RAG Pipeline Architecture — v2.1",
+    accept: ".txt,.md",
     template:
       "SYSTEM NAME — OVERVIEW\n\nSTACK\n  - Backend: \n  - Frontend: \n  - Database: \n\nARCHITECTURE\n  \n\nPERFORMANCE TARGETS\n  p95 Latency: \n  Availability SLO: \n  Error Budget: ",
-    hint: "Fill in each section — replace the placeholder text with your system's details.",
+    hint: "Upload a .txt or .md file — or fill in the template with your system's details.",
     validate: (c) => c.trim().length < 80 ? "Fill in the template sections (min 80 chars)." : null,
   },
   {
     id: "compliance", icon: "✅", label: "Compliance Records",
     formatTag: "COMPLIANCE", formatColor: "fmt-compliance", inputMode: "file_text",
     titlePlaceholder: "e.g. GDPR Data Retention Policy — 2026",
+    accept: ".pdf,.txt,.md",
     template:
       "POLICY TITLE (Reviewed: Month Year)\n\nSCOPE\n  This policy applies to: \n\nDATA RETENTION\n  Personal data retained for: \n\nDATA SUBJECT RIGHTS\n  Right of access: \n  Right to erasure: \n  Right to portability: \n\nCOMPLIANCE CONTACT\n  dpo@company.com",
-    hint: "Replace each line in the template with your organisation's actual policy details.",
+    hint: "Upload a .pdf, .txt, or .md file — or replace each line in the template with your organisation's actual policy details.",
     validate: (c) => c.trim().length < 80 ? "Fill in all template sections (min 80 chars)." : null,
   },
   {
@@ -308,7 +312,7 @@ function KVBuilderWithUpload({
 
 // ── File + Text Input ────────────────────────────────────────────
 
-function FileTextInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function FileTextInput({ value, onChange, accept = ".txt,.md" }: { value: string; onChange: (v: string) => void; accept?: string }) {
   const fileRef  = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
 
@@ -320,11 +324,13 @@ function FileTextInput({ value, onChange }: { value: string; onChange: (v: strin
     reader.readAsText(file);
   };
 
+  const acceptLabel = accept.replace(/,/g, ", ");
+
   return (
     <div className="file-text-input">
       <div className="file-upload-zone" onClick={() => fileRef.current?.click()}>
-        <input ref={fileRef} type="file" accept=".txt,.md" style={{ display: "none" }} onChange={handleFile} />
-        <span>📄 {fileName ? `Loaded: ${fileName}` : "Click to upload a .txt or .md file"}</span>
+        <input ref={fileRef} type="file" accept={accept} style={{ display: "none" }} onChange={handleFile} />
+        <span>📄 {fileName ? `Loaded: ${fileName}` : `Click to upload a ${acceptLabel} file`}</span>
       </div>
       <div className="file-or-divider">— or paste text below —</div>
       <textarea
@@ -612,6 +618,7 @@ export default function KBPage({ token, email, isAdmin, onBack, onGoChat, onLogo
                             <FileTextInput
                               value={addForm.content}
                               onChange={(v) => { setAddForm({ ...addForm, content: v }); setAddErr(null); }}
+                              accept={cat.accept}
                             />
                           )}
                         </div>

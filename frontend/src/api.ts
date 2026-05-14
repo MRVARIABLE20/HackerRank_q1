@@ -1,4 +1,35 @@
 // API client — all requests include Authorization: Bearer <token>
+
+// ── Auth expiry helpers ──────────────────────────────────────────
+
+/** Decode the JWT payload (no signature verification) and return exp in ms, or null. */
+export function getTokenExpiry(token: string): number | null {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return typeof payload.exp === "number" ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Returns true if the token is already expired. */
+export function isTokenExpired(token: string): boolean {
+  const exp = getTokenExpiry(token);
+  return exp === null || Date.now() >= exp;
+}
+
+/**
+ * Drop-in fetch replacement used by all authenticated calls.
+ * Dispatches a global "auth:expired" CustomEvent on 401/403, so App.tsx
+ * can react and log the user out from any page.
+ */
+async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const r = await fetch(input, init);
+  if (r.status === 401 || r.status === 403) {
+    window.dispatchEvent(new CustomEvent("auth:expired"));
+  }
+  return r;
+}
 export type Citation = {
   doc_id: string;
   source_uri: string;
@@ -85,7 +116,7 @@ export async function signup(
 }
 
 export async function getMe(token: string): Promise<MeResponse> {
-  const r = await fetch(`${API}/auth/me`, {
+  const r = await apiFetch(`${API}/auth/me`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!r.ok) throw new Error("Token invalid or expired");
@@ -93,7 +124,7 @@ export async function getMe(token: string): Promise<MeResponse> {
 }
 
 export async function getAuditLog(token: string, limit = 20): Promise<AuditEntry[]> {
-  const r = await fetch(`${API}/audit?limit=${limit}`, {
+  const r = await apiFetch(`${API}/audit?limit=${limit}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!r.ok) throw new Error("Cannot fetch audit log");
@@ -101,7 +132,7 @@ export async function getAuditLog(token: string, limit = 20): Promise<AuditEntry
 }
 
 export async function chat(token: string, query: string): Promise<ChatResponse> {
-  const r = await fetch(`${API}/chat`, {
+  const r = await apiFetch(`${API}/chat`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -127,7 +158,7 @@ export type KBDoc = {
 };
 
 export async function getCategories(token: string): Promise<KBCategory[]> {
-  const r = await fetch(`${API}/admin/docs/categories`, {
+  const r = await apiFetch(`${API}/admin/docs/categories`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!r.ok) throw new Error("Cannot fetch categories");
@@ -138,7 +169,7 @@ export async function getCategories(token: string): Promise<KBCategory[]> {
 export async function listDocs(token: string, category?: string): Promise<KBDoc[]> {
   const url = new URL(`${API}/admin/docs`);
   if (category) url.searchParams.set("category", category);
-  const r = await fetch(url.toString(), {
+  const r = await apiFetch(url.toString(), {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!r.ok) throw new Error("Cannot fetch documents");
@@ -151,7 +182,7 @@ export async function createDoc(
   title: string,
   content: string,
 ): Promise<KBDoc> {
-  const r = await fetch(`${API}/admin/docs`, {
+  const r = await apiFetch(`${API}/admin/docs`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -171,7 +202,7 @@ export async function updateDoc(
   id: number,
   patch: { category?: string; title?: string; content?: string },
 ): Promise<KBDoc> {
-  const r = await fetch(`${API}/admin/docs/${id}`, {
+  const r = await apiFetch(`${API}/admin/docs/${id}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -184,7 +215,7 @@ export async function updateDoc(
 }
 
 export async function deleteDoc(token: string, id: number): Promise<void> {
-  const r = await fetch(`${API}/admin/docs/${id}`, {
+  const r = await apiFetch(`${API}/admin/docs/${id}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -196,7 +227,7 @@ export async function deleteDoc(token: string, id: number): Promise<void> {
 export async function kbListDocs(token: string, category?: string): Promise<KBDoc[]> {
   const url = new URL(`${API}/kb/docs`);
   if (category) url.searchParams.set("category", category);
-  const r = await fetch(url.toString(), {
+  const r = await apiFetch(url.toString(), {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!r.ok) throw new Error("Cannot fetch documents");
@@ -209,7 +240,7 @@ export async function kbCreateDoc(
   title: string,
   content: string,
 ): Promise<KBDoc> {
-  const r = await fetch(`${API}/kb/docs`, {
+  const r = await apiFetch(`${API}/kb/docs`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -225,7 +256,7 @@ export async function kbCreateDoc(
 }
 
 export async function kbDeleteDoc(token: string, id: number): Promise<void> {
-  const r = await fetch(`${API}/kb/docs/${id}`, {
+  const r = await apiFetch(`${API}/kb/docs/${id}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   });

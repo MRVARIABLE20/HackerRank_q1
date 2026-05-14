@@ -46,8 +46,25 @@ def login():
         sys.exit(1)
 
 
-def seed_document(token, category, title, content):
-    """POST a single KB document."""
+def fetch_existing_titles(token):
+    """Fetch all existing KB document titles to avoid duplicates."""
+    try:
+        resp = requests.get(
+            f"{API_BASE}/kb/docs",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return {doc["title"] for doc in resp.json()}
+    except Exception:
+        return set()
+
+
+def seed_document(token, category, title, content, existing_titles):
+    """POST a single KB document, skipping if a doc with the same title exists."""
+    if title in existing_titles:
+        print(f"⏭ [{category:12}] {title} — already exists, skipping")
+        return False
     try:
         resp = requests.post(
             f"{API_BASE}/kb/docs",
@@ -57,8 +74,10 @@ def seed_document(token, category, title, content):
         )
         resp.raise_for_status()
         print(f"✓ [{category:12}] {title}")
+        return True
     except requests.exceptions.HTTPError as e:
         print(f"✗ [{category:12}] {title} — FAILED: {e}")
+        return False
 
 
 def main():
@@ -70,6 +89,10 @@ def main():
 
     token = login()
     print(f"Logged in as {ADMIN_EMAIL}\n")
+
+    existing_titles = fetch_existing_titles(token)
+    if existing_titles:
+        print(f"Found {len(existing_titles)} existing document(s) — duplicates will be skipped.\n")
 
     # Map folders to categories
     mappings = [
@@ -102,7 +125,7 @@ def main():
                     with open(file, encoding="utf-8") as f:
                         content = f.read()
 
-                seed_document(token, category, title, content)
+                seed_document(token, category, title, content, existing_titles)
                 total += 1
             except Exception as e:
                 print(f"✗ [{category:12}] {title} — ERROR reading file: {e}")
