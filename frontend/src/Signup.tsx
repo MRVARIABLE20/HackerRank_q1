@@ -9,6 +9,8 @@ type Props = {
 
 export default function Signup({ onSignup, onGoLogin }: Props) {
   const [form, setForm] = useState({ email: "", password: "", confirm: "", full_name: "" });
+  const [showPw, setShowPw]       = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err,  setErr]  = useState<string | null>(null);
 
@@ -60,11 +62,21 @@ export default function Signup({ onSignup, onGoLogin }: Props) {
         <div className="form-row">
           <div className="form-group">
             <label>Password</label>
-            <input type="password" value={form.password} onChange={set("password")} placeholder="Min. 8 characters" required />
+            <div className="pw-wrap">
+              <input type={showPw ? "text" : "password"} value={form.password} onChange={set("password")} placeholder="Min. 8 characters" required />
+              <button type="button" className="pw-eye" onClick={() => setShowPw(v => !v)} aria-label={showPw ? "Hide password" : "Show password"}>
+                {showPw ? "🙈" : "👁"}
+              </button>
+            </div>
           </div>
           <div className="form-group">
             <label>Confirm password</label>
-            <input type="password" value={form.confirm} onChange={set("confirm")} placeholder="Repeat password" required />
+            <div className="pw-wrap">
+              <input type={showConfirm ? "text" : "password"} value={form.confirm} onChange={set("confirm")} placeholder="Repeat password" required />
+              <button type="button" className="pw-eye" onClick={() => setShowConfirm(v => !v)} aria-label={showConfirm ? "Hide password" : "Show password"}>
+                {showConfirm ? "🙈" : "👁"}
+              </button>
+            </div>
           </div>
         </div>
 

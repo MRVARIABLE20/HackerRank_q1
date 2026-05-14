@@ -10,6 +10,7 @@ type Props = {
 export default function Login({ onLogin, onGoSignup }: Props) {
   const [email, setEmail]       = useState("analyst@corp.com");
   const [password, setPassword] = useState("demo1234");
+  const [showPw, setShowPw]     = useState(false);
   const [busy, setBusy]         = useState(false);
   const [err, setErr]           = useState<string | null>(null);
 
@@ -55,13 +56,23 @@ export default function Login({ onLogin, onGoSignup }: Props) {
 
         <div className="form-group">
           <label>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            placeholder="••••••••"
-            required
-          />
+          <div className="pw-wrap">
+            <input
+              type={showPw ? "text" : "password"}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+            />
+            <button
+              type="button"
+              className="pw-eye"
+              onClick={() => setShowPw(v => !v)}
+              aria-label={showPw ? "Hide password" : "Show password"}
+            >
+              {showPw ? "🙈" : "👁"}
+            </button>
+          </div>
         </div>
 
         {err && <div className="error">⚠ {err}</div>}

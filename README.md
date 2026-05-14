@@ -4,6 +4,34 @@ Production-grade Retrieval-Augmented Generation (RAG) system with FastAPI backen
 
 ---
 
+## 📸 Screenshots
+
+### Login
+![Login](Screenshots/Login.png)
+
+### Sign Up
+![Sign Up](Screenshots/Signup.png)
+
+### Dashboard — User View
+![User Dashboard](Screenshots/UserDasboard.png)
+
+### Dashboard — Admin View
+![Admin Dashboard](Screenshots/AdminDashboard.png)
+
+### Knowledge Base (Admin)
+![Knowledge Base](Screenshots/AdminDocsPage.png)
+
+### Audit Log
+![Audit Log](Screenshots/AdminLogPage.png)
+
+### Security & Token
+![Security Page](Screenshots/SecurityPage.png)
+
+### Chat Interface
+![Chat](Screenshots/Chatpage.png)
+
+---
+
 ## ✅ Prerequisites Checklist
 
 Before starting the app, make sure **every item below** is in place.
