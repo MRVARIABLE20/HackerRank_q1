@@ -1,0 +1,223 @@
+RAG TYPES — MASTER COMPARISON DOCUMENT
+=========================================
+For: HackerRank_q1 RAG Atlas
+Created: June 2026
+Purpose: Comprehensive comparison of all RAG paradigms for selecting the right approach
+
+=============================================================================
+SECTION 1: COMPLETE RAG TAXONOMY (All Known Types as of 2026)
+=============================================================================
+
+TIER 1 — FOUNDATIONAL
+  01. Naive RAG           | The original fixed retrieve-once pipeline
+  02. Vector-less RAG     | BM25/TF-IDF keyword retrieval, no embeddings
+  03. SQL RAG             | Natural language → SQL → structured DB query
+
+TIER 2 — PIPELINE IMPROVEMENTS
+  04. Advanced RAG        | Pre/post retrieval enhancements (query rewriting, reranking)
+  05. Hybrid RAG          | Dense (vector) + Sparse (BM25) + Reciprocal Rank Fusion
+  06. Modular RAG         | Plug-and-play interchangeable components
+  07. RAG-Fusion          | Multi-query generation + RRF merging
+  08. Speculative RAG     | Small specialist drafts → large model verifies
+  09. Multi-hop RAG       | Iterative retrieval for multi-document reasoning
+
+TIER 3 — SELF-CORRECTING
+  10. Self-RAG            | LLM generates reflection tokens to control retrieval
+  11. Corrective RAG      | External evaluator scores retrieval quality + web fallback
+  12. Adaptive RAG        | Query complexity classifier routes to cheapest sufficient strategy
+  13. Bidirectional RAG   | Retrieves from query→doc AND doc→query directions
+
+TIER 4 — STRUCTURED / GRAPH
+  14. Graph RAG           | Knowledge graph with entity nodes and relationship edges
+  15. Hybrid GraphRAG     | Graph traversal + vector search combined
+  16. mKG-RAG             | Multimodal knowledge graph (text + image entities)
+
+TIER 5 — AGENTIC
+  17. Agentic RAG         | LLM agent controls retrieval in a dynamic loop
+  18. Multi-Agent RAG     | Multiple specialized agents collaborate
+  19. A-RAG               | Hierarchical retrieval interfaces at scale
+
+TIER 6 — MULTIMODAL
+  20. Multimodal RAG      | Text + images + tables + audio + video
+  21. VisRAG              | Purely visual — document pages as images (ICLR 2025)
+  22. BayesRAG            | Probabilistic multi-modal evidence fusion
+
+TIER 7 — SPECIALIZED
+  23. Long-Context RAG    | Stuffs large context into 128k–1M token models
+  24. Security RAG        | Access control, PII filtering, audit trails
+  25. Multilingual RAG    | Cross-language retrieval and generation
+
+=============================================================================
+SECTION 2: HEAD-TO-HEAD COMPARISON TABLE
+=============================================================================
+
+RAG Type          | Impl  | Latency | Cost  | Multi-hop | Hallucin | Struct | Year
+------------------|-------|---------|-------|-----------|----------|--------|------
+Naive RAG         | Easy  | Low     | Low   | No        | None     | Poor   | 2020
+Vector-less RAG   | Easy  | Lowest  | Zero  | No        | None     | Poor   | 1994
+SQL RAG           | Med   | Low     | Low   | Partial   | Low      | Excel  | 2022
+Advanced RAG      | Med   | Med     | Med   | No        | Low      | Poor   | 2023
+Hybrid RAG        | Med   | Med     | Med   | No        | Low      | Poor   | 2022
+Modular RAG       | High  | Varies  | Med   | Optional  | Varies   | Yes    | 2023
+RAG-Fusion        | Med   | Med     | Med   | No        | Low      | Poor   | 2024
+Speculative RAG   | High  | Low*    | Med   | No        | Med      | Poor   | 2024
+Multi-hop RAG     | Med   | High    | High  | YES       | Med      | Poor   | 2023
+Self-RAG          | High  | High    | High  | Partial   | HIGH     | Poor   | 2023
+Corrective RAG    | Med   | Med     | Med   | No        | HIGH     | Poor   | 2024
+Adaptive RAG      | Med   | Low*    | Low*  | Partial   | Med      | No     | 2024
+Graph RAG         | High  | High    | High  | YES       | High     | Med    | 2024
+Agentic RAG       | High  | Highest | High  | YES       | High     | Yes    | 2025
+Multi-Agent RAG   | V.High| Highest | V.High| YES       | Highest  | Yes    | 2025
+Multimodal RAG    | High  | High    | High  | No        | Med      | Med    | 2024
+SQL RAG+Vector    | High  | Med     | Med   | Partial   | Med      | YES    | 2024
+Corrective+Graph  | V.High| High    | High  | YES       | Highest  | Med    | 2025
+
+Legend: *=for simple queries; Impl=Implementation difficulty; Struct=Structured data support
+
+=============================================================================
+SECTION 3: DECISION GUIDE — WHICH RAG TO USE?
+=============================================================================
+
+QUESTION 1: What kind of documents do you have?
+  Unstructured text only → Naive, Hybrid, or Advanced RAG
+  Tables/CSVs/databases → SQL RAG
+  Images, PDFs with charts → Multimodal RAG
+  All of the above → Modular RAG
+
+QUESTION 2: How complex are typical user queries?
+  Simple factual ("What is our policy on X?") → Naive RAG, Adaptive RAG
+  Moderate one-hop ("Summarize all incidents in April") → Advanced or Hybrid RAG
+  Complex multi-hop ("Which customers violate our retention policy?") → Multi-hop or Graph RAG
+  Unknown mix → Adaptive RAG (routes automatically)
+
+QUESTION 3: How important is accuracy vs speed?
+  Speed first → Naive RAG or Speculative RAG
+  Accuracy first → Self-RAG or Corrective RAG
+  Balanced → Adaptive RAG or Hybrid RAG
+
+QUESTION 4: Can you fine-tune the model?
+  Yes → Self-RAG (best for hallucination control)
+  No → Corrective RAG (plug-and-play evaluator)
+
+QUESTION 5: What is your infrastructure budget?
+  Minimal → Naive RAG or Vector-less RAG
+  Moderate → Hybrid RAG + Reranker
+  High → Graph RAG or Agentic RAG
+  Enterprise → Multi-Agent RAG
+
+QUESTION 6: Do queries span entity relationships?
+  Yes → Graph RAG
+  No → Hybrid or Advanced RAG
+
+=============================================================================
+SECTION 4: PAPER REFERENCE QUICK INDEX
+=============================================================================
+
+Foundational:
+  Naive RAG: https://arxiv.org/abs/2005.11401 (Lewis et al., 2020)
+  RAG Survey: https://arxiv.org/abs/2312.10997 (Gao et al., 2023)
+
+Self-Correcting:
+  Self-RAG: https://arxiv.org/abs/2310.11511 (Asai et al., NeurIPS 2023)
+  CRAG: https://arxiv.org/abs/2401.15884 (Yan et al., 2024)
+  Adaptive-RAG: https://arxiv.org/abs/2403.14403 (Jeong et al., NAACL 2024)
+
+Advanced:
+  Speculative RAG: https://arxiv.org/abs/2407.08223 (Wang et al., Google 2024)
+  RAG-Fusion: https://arxiv.org/abs/2402.03367 (Rackauckas, 2024)
+
+Graph:
+  Graph RAG: https://www.microsoft.com/en-us/research/publication/from-local-to-global-a-graph-rag-approach-to-query-focused-summarization/
+  Awesome-GraphRAG: https://github.com/DEEP-PolyU/Awesome-GraphRAG
+
+Agentic:
+  Agentic RAG Survey: https://arxiv.org/abs/2501.09136 (Singh et al., 2025)
+  A-RAG Hierarchical: https://arxiv.org/pdf/2602.03442 (2026)
+  System1 vs System2: https://arxiv.org/pdf/2506.10408 (2026)
+
+Multimodal:
+  VisRAG: https://arxiv.org/abs/2410.10594 (ICLR 2025)
+  BayesRAG: https://arxiv.org/pdf/2601.07329 (2026)
+  RAG-Anything: https://github.com/HKUDS/RAG-Anything (2026)
+
+SQL:
+  Text-to-SQL Survey: https://arxiv.org/html/2410.01066v2 (2024)
+  RAG Variants for SQL: https://arxiv.org/html/2602.07086v1 (2026)
+
+Multi-hop:
+  HopRAG: https://arxiv.org/html/2502.12442v1 (2025)
+  KiRAG: https://arxiv.org/pdf/2502.18397 (2025)
+  DualRAG: https://arxiv.org/pdf/2504.18243 (2025)
+
+=============================================================================
+SECTION 5: THIS PROJECT'S RAG TYPE AND UPGRADE PATHS
+=============================================================================
+
+CURRENT IMPLEMENTATION: Naive RAG
+File: backend/app/routers/chat.py
+  - Embedding: openai/text-embedding-3-small (via OpenRouter)
+  - Retrieval: Cosine similarity on all KBDocuments
+  - Top-K: 6 documents
+  - Vector Store: In-memory Python dict (no persistence)
+  - Generator: OpenRouter LLM (configurable model)
+
+QUICK WINS (Low effort, high value):
+  1. Add Hybrid RAG: +SQLite FTS5 + RRF fusion → +15-30% accuracy
+     Files to change: chat.py _select_relevant()
+     Time estimate: 1-2 days
+
+  2. Add SQL RAG for CSV data: Load CSVs into in-memory SQLite → exact numeric queries
+     Files to change: chat.py + add sql_rag.py module
+     Time estimate: 2-3 days
+
+  3. Add query routing: detect structured vs unstructured queries → route to SQL or vector
+     Files to change: chat.py chat() endpoint
+     Time estimate: 1 day
+
+MEDIUM TERM (Medium effort, major accuracy gains):
+  4. Add Corrective RAG: Add relevance evaluator + web search fallback
+     Files: chat.py + add evaluator.py
+     Time estimate: 3-5 days
+
+  5. Add Multi-hop RAG: Iterative retrieval for complex queries
+     Files: chat.py + multi_hop.py
+     Time estimate: 3-5 days
+
+LONG TERM (High effort, transformative capabilities):
+  6. Graph RAG: Entity extraction + knowledge graph
+     Tools: microsoft/graphrag or lightrag
+     Time estimate: 2-3 weeks
+
+  7. Agentic RAG: LangGraph or LlamaIndex agents with multiple tools
+     Tools: langgraph, tavily (web search), existing SQL retriever
+     Time estimate: 2-4 weeks
+
+  8. Multimodal RAG: ColPali + VLM for PDF visual content
+     Tools: colpali-engine, pdf2image, Qdrant for vector storage
+     Time estimate: 3-4 weeks
+
+=============================================================================
+QUERY EXAMPLES FOR CHATBOT TESTING (per RAG type)
+=============================================================================
+
+Test Naive RAG (current):
+  "What is our GDPR data retention policy?"
+  "Summarize the ISO 27001 compliance status"
+  "What is the SEV-1 incident response procedure?"
+
+Test SQL RAG needs (structured queries):
+  "How many customers have a health score below 60?" (needs COUNT on CSV)
+  "What was total Q1 2026 revenue for the APAC region?" (needs SUM+GROUP BY)
+  "Which sales rep had the highest close rate in Q1?" (needs aggregation)
+
+Test Multi-hop needs:
+  "Which customers might be affected by our GDPR retention policy gaps?"
+  "Cross-reference the security audit findings with our incident response runbook"
+
+Test Graph RAG needs (relationship queries):
+  "What are all the interconnected risks mentioned across our compliance documents?"
+  "Map the relationships between our infrastructure services and their SLOs"
+
+Test Multimodal needs (visual content in PDFs):
+  "What does the training loss curve look like in the Flan-T5 paper?"
+  "Explain the architecture diagram from the GenAI notes"

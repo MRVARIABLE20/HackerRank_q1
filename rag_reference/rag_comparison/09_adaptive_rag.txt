@@ -1,0 +1,160 @@
+RAG TYPE: Adaptive RAG
+=======================
+Full Title: "Adaptive-RAG: Learning to Adapt Retrieval-Augmented Large Language Models through Question Complexity"
+Authors: Soyeong Jeong, Jinheon Baek, Sukmin Cho, Sung Ju Hwang, Jong C. Park
+Year: 2024 (NAACL 2024)
+arXiv: 2403.14403
+Paper URL: https://arxiv.org/abs/2403.14403
+ACL Anthology: https://aclanthology.org/2024.naacl-long.389/
+
+OVERVIEW
+--------
+Adaptive RAG recognizes that not all queries are equally complex — and therefore should not
+all follow the same retrieval strategy. A simple factual question ("What is the capital of France?")
+does NOT need retrieval at all. A moderate question needs a single retrieval pass. A complex
+multi-hop question needs iterative multi-hop retrieval. Adaptive RAG uses a small CLASSIFIER
+to route each query to the appropriate strategy.
+
+KEY INSIGHT: Applying the most expensive retrieval strategy to every query wastes compute
+and can even hurt accuracy (irrelevant documents degrade simple answers).
+
+THE THREE STRATEGIES
+---------------------
+Adaptive RAG routes queries to ONE of three strategies:
+
+STRATEGY A: No Retrieval (Closed-Book)
+  Complexity: Simple / factual
+  Examples: "Who wrote Romeo and Juliet?", "What is 2^10?"
+  Process: LLM answers directly from parametric knowledge — no retrieval at all
+  Cost: Cheapest (zero retrieval)
+  When: Query is within LLM's reliable factual knowledge
+
+STRATEGY B: Single-Step RAG (Standard RAG)
+  Complexity: Moderate / one-hop
+  Examples: "What are the main features of Python 3.12?", "Summarize our GDPR policy"
+  Process: Standard retrieve-then-generate (like current project implementation)
+  Cost: Medium (one retrieval + one generation)
+  When: Query benefits from document grounding but doesn't span multiple docs
+
+STRATEGY C: Multi-Step RAG (Iterative / Multi-hop RAG)
+  Complexity: Complex / multi-hop
+  Examples: "How did the 2023 banking crisis affect our compliance requirements?"
+  Process: Iterative retrieval — retrieve → reason → retrieve → reason → generate
+  Cost: Most expensive (multiple retrieval + generation steps)
+  When: Answer requires connecting facts across multiple documents or reasoning chains
+
+THE COMPLEXITY CLASSIFIER
+--------------------------
+Adaptive RAG uses a fine-tuned T5-Large classifier:
+  Input: User query text
+  Output: One of {A, B, C} (strategy label)
+  Training: Automatically derived complexity labels from existing QA datasets
+  Inference latency: ~20ms (very fast — tiny model)
+  Model size: T5-Large (770M parameters) — much smaller than the generator
+
+AUTOMATIC LABEL DERIVATION (Training Data Creation):
+  1. Take a QA dataset with ground-truth answers
+  2. Run Strategy A (no retrieval) on each query → label A if correct
+  3. Run Strategy B (single-step RAG) on remaining → label B if correct
+  4. Label remaining queries C (need multi-step)
+  5. Train classifier on these automatically derived labels — NO manual annotation needed
+
+HOW IT WORKS — COMPLETE PIPELINE
+----------------------------------
+1. User submits query: "How does our remote work policy interact with GDPR requirements for EU employees?"
+
+2. Classifier evaluates query → routes to Strategy C (Complex / multi-hop)
+   Classifier output: 0.12 (A), 0.21 (B), 0.67 (C) → select C
+
+3. Multi-step retrieval:
+   Step 1: Retrieve docs about "remote work policy" → find policy doc
+   Step 2: From policy doc context, form new query: "GDPR requirements for employee data"
+   Step 3: Retrieve GDPR docs → find data transfer rules
+   Step 4: Synthesize: how do these interact?
+
+4. Generate final answer with citations from both policy and GDPR docs
+
+BENCHMARK RESULTS (NAACL 2024)
+--------------------------------
+Dataset       | No Retrieval | Single-Step RAG | Multi-Step RAG | Adaptive-RAG
+--------------|-------------|----------------|----------------|-------------
+SingleQA      | 64.2        | 72.8           | 71.3           | 74.1
+MultiHopQA    | 31.7        | 58.4           | 65.2           | 66.9
+Hybrid Mix    | 52.8        | 65.7           | 63.9           | 69.4 ← Best
+
+Adaptive RAG matches or beats always-using-expensive-strategy while costing much less.
+
+COST ANALYSIS
+--------------
+Assuming 60% simple, 30% moderate, 10% complex queries:
+
+Always Strategy C: 100% × multi-step cost = 100 units
+Adaptive RAG:      60% × 0 + 30% × 1 + 10% × 3 = 0.6 units
+Cost reduction: ~83% cheaper than always using the most powerful strategy
+
+STRENGTHS
+---------
++ Dramatically reduces cost and latency for simple queries
++ Matches peak performance of expensive strategies on complex queries
++ Classifier is tiny and fast (~20ms overhead per query)
++ No fine-tuning of the generator required
++ Automatic training data creation — no manual annotation
++ Naturally scales as query complexity distribution shifts
+
+WEAKNESSES
+-----------
+- Classifier errors can misroute queries (simple classified as complex = wasteful)
+- Requires training a small classifier model (though automatic labeling helps)
+- More complex orchestration logic than fixed-strategy RAG
+- Multi-hop strategy (C) still carries full multi-step cost
+- Distribution shift: classifier may fail on queries unlike training data
+
+INTEGRATION WITH THIS PROJECT
+-------------------------------
+Adding Adaptive RAG routing to backend/app/routers/chat.py:
+
+def classify_complexity(query: str) -> str:
+    """Returns 'A' (no retrieval), 'B' (single-step), or 'C' (multi-hop)"""
+    # Lightweight approach: use LLM as classifier (simpler, no fine-tuning)
+    prompt = f"""Rate this query complexity for a knowledge base search:
+    Query: {query}
+    Answer with just: A (no retrieval needed), B (one search needed), or C (multiple searches needed)"""
+    response = call_llm(prompt, max_tokens=5)
+    return response.strip()[0].upper()
+
+# In chat endpoint:
+strategy = classify_complexity(body.query)
+if strategy == "A":
+    picks = []  # No retrieval
+elif strategy == "B":
+    picks = _select_relevant(body.query, all_docs)  # Current implementation
+else:
+    picks = multi_hop_retrieval(body.query, all_docs)  # New multi-step
+
+WHEN TO USE ADAPTIVE RAG
+--------------------------
+- Mixed-complexity query workloads (enterprise chat assistants)
+- Cost-sensitive deployments where retrieval APIs are expensive
+- When latency matters for simple queries (avoid unnecessary retrieval)
+- Systems serving both expert and novice users
+- Production systems where optimizing for the average case matters
+
+RECENT EXTENSIONS (2026)
+--------------------------
+- RAGRouter-Bench (2026): Lighter classifiers, richer domain evaluation
+  arxiv.org/abs/2604.03455
+
+- FAIR-RAG (2025): Faithful Adaptive Iterative Refinement, adds iterative
+  refinement within each strategy
+  arxiv.org/html/2510.22344v1
+
+- Tier-Based Framework (2026): GPT-4o-mini classifier for 4-tier routing
+  arxiv.org/html/2604.14222v1
+
+REFERENCES
+-----------
+- Original Paper: https://arxiv.org/abs/2403.14403
+- ACL Anthology: https://aclanthology.org/2024.naacl-long.389/
+- RAGRouter-Bench (2026): https://arxiv.org/abs/2604.03455
+- FAIR-RAG: https://arxiv.org/html/2510.22344v1
+- Routing Survey: https://arxiv.org/pdf/2502.00409

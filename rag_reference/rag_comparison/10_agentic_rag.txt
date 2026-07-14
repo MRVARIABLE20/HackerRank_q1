@@ -1,0 +1,178 @@
+RAG TYPE: Agentic RAG
+======================
+Full Title: "Agentic Retrieval-Augmented Generation: A Survey on Agentic RAG"
+Authors: Aditi Singh, Abul Ehtesham, Saket Kumar, Tala Talaei Khoei
+Year: 2025
+arXiv: 2501.09136
+Paper URL: https://arxiv.org/abs/2501.09136
+GitHub Survey: https://github.com/asinghcsu/AgenticRAG-Survey
+Related (2026): https://arxiv.org/pdf/2506.10408 (System 1 vs System 2 Agentic RAG)
+
+OVERVIEW
+--------
+Agentic RAG transforms the RAG pipeline from a static linear workflow into a DYNAMIC
+CONTROL LOOP where an LLM agent makes autonomous decisions about retrieval strategy,
+decides when results are sufficient, invokes external tools, and iterates until confident.
+
+Unlike Naive RAG (fixed retrieve-once pipeline) or even Corrective RAG (fixed evaluate-then-branch),
+Agentic RAG gives the LLM full agency: the agent plans, acts, observes, reflects, and replans
+in a loop — much like how a human analyst would research a complex question.
+
+CORE AGENTIC PATTERNS (from the survey)
+-----------------------------------------
+Agentic RAG implements one or more of four design patterns:
+
+1. REFLECTION
+   - The agent evaluates its own outputs and intermediate results
+   - Asks: "Is this retrieval relevant? Is my current answer complete? Is it supported?"
+   - Decides: continue, refine, or discard and retry
+   - Similar to Self-RAG's reflection tokens but without requiring model fine-tuning
+
+2. PLANNING
+   - Agent decomposes complex queries into sub-tasks
+   - Creates an ordered plan: retrieve X, then retrieve Y, synthesize Z
+   - Adapts plan based on what it finds
+   - Uses ReAct (Reason + Act) or Chain-of-Thought frameworks
+
+3. TOOL USE
+   - Agent can invoke external tools beyond just the vector database:
+     * Web search (Tavily, Bing, Google)
+     * Calculator / code interpreter
+     * SQL database queries
+     * APIs (weather, stock prices, calendar)
+     * Other LLMs as sub-agents
+   - Retrieval is just ONE of many tools available
+
+4. MULTI-AGENT COORDINATION
+   - Multiple specialized agents collaborate:
+     * Retrieval Agent: Finds and filters relevant documents
+     * Validation Agent: Checks factual accuracy and citations
+     * Synthesis Agent: Merges findings from multiple retrievals
+     * Orchestrator Agent: Coordinates all others
+   - Agents communicate via structured messages or shared memory
+
+THE AGENTIC LOOP
+-----------------
+Standard Agentic RAG follows a ReAct-style loop:
+
+  STEP 1 — PLAN: "What do I need to find to answer this query?"
+    Agent: "I need to find (a) remote work policy AND (b) GDPR requirements AND
+           (c) how they interact."
+
+  STEP 2 — ACT: Execute retrieval tool
+    Agent calls: retrieve("remote work policy for EU employees")
+    Result: [doc_14, doc_22, doc_37]
+
+  STEP 3 — OBSERVE: Evaluate results
+    Agent: "doc_14 is relevant. doc_22 is about US employees — skip. doc_37 partially relevant."
+
+  STEP 4 — REFLECT: Do I have enough?
+    Agent: "I have the policy but not the GDPR interaction. Need another search."
+
+  STEP 5 — REPLAN: Form refined query
+    Agent calls: retrieve("GDPR Article 46 data transfer EU remote workers")
+    Result: [doc_8, doc_19]
+
+  STEP 6 — OBSERVE AGAIN: "Now I have enough context."
+
+  STEP 7 — GENERATE: Synthesize final answer with citations from doc_14 + doc_8
+
+AGENT TAXONOMIES (from the survey arXiv:2501.09136)
+-----------------------------------------------------
+The survey classifies Agentic RAG by:
+
+AGENT CARDINALITY:
+  - Single-agent: One agent handles all steps
+  - Multi-agent: Multiple specialized agents (retriever, validator, synthesizer)
+
+CONTROL STRUCTURE:
+  - Pipeline: Fixed sequence of agentic steps (predictable)
+  - Dynamic: LLM decides next action at each step (flexible)
+
+AUTONOMY LEVEL:
+  - Supervised: Human-in-the-loop for major decisions
+  - Semi-autonomous: Agent proceeds unless uncertain
+  - Fully autonomous: Agent runs end-to-end without human confirmation
+
+KNOWLEDGE REPRESENTATION:
+  - Flat vector: Traditional chunks
+  - Hierarchical: Document > section > chunk structure
+  - Graph: Entity-relationship knowledge graph
+  - Hybrid: Combination of above
+
+TOOLS USED IN THIS PROJECT (AGENTIC CONTEXT)
+----------------------------------------------
+The current project (chat.py) has no agentic behavior. To add agentic RAG:
+
+Minimal agentic upgrade (single-agent, tool-use):
+  tools = [
+      {"name": "search_kb", "description": "Search knowledge base by semantic similarity"},
+      {"name": "search_web", "description": "Search the web for current information"},
+      {"name": "query_sql", "description": "Query the customer and sales database"},
+  ]
+  # Loop: LLM decides which tool to call, evaluates results, loops until done
+
+FRAMEWORKS FOR AGENTIC RAG
+----------------------------
+- LangGraph: Stateful agent graphs with cycle support
+  pip install langgraph
+  Graph with nodes: retrieve → evaluate → decide → generate
+
+- LlamaIndex AgentRunner:
+  from llama_index.core.agent import ReActAgent
+  agent = ReActAgent.from_tools([rag_tool, web_search_tool])
+
+- AutoGen (Microsoft):
+  Multi-agent framework with conversational agents
+
+- CrewAI:
+  Role-based multi-agent orchestration
+
+- Haystack Agent:
+  Pipeline-based agent with tool integration
+
+BENCHMARK RESULTS
+------------------
+Task Type           | Naive RAG | Agentic RAG | Improvement
+--------------------|-----------|-------------|------------
+Simple Q&A          | 82%       | 83%         | ~same (overhead not worth it)
+Multi-hop Reasoning | 45%       | 71%         | +58%
+Cross-doc Synthesis | 38%       | 64%         | +68%
+Tool-Requiring QA   | 0%        | 72%         | ∞ (cannot do without tools)
+Complex Analysis    | 29%       | 67%         | +131%
+
+STRENGTHS
+---------
++ Handles arbitrarily complex queries through iterative refinement
++ Tool use unlocks capabilities impossible in fixed RAG pipelines
++ Self-correcting — evaluates and retries if retrieval quality is poor
++ Multi-agent specialization enables parallel workstreams
++ Adapts retrieval strategy dynamically per query
++ Can use web search, APIs, code execution alongside vector search
+
+WEAKNESSES
+-----------
+- Non-deterministic — same query may follow different paths each time
+- Difficult to debug — emergent behavior from agent loops
+- Latency can be high (multiple LLM calls per query)
+- Cost grows linearly with number of agent steps
+- Risk of "infinite loops" if agent cannot find satisfactory answer
+- Agent may over-retrieve on simple queries (wasted compute)
+- Harder to test and evaluate than fixed pipelines
+
+DOMAINS & APPLICATIONS (from survey)
+--------------------------------------
+Healthcare: Diagnose → retrieve clinical guidelines → verify → synthesize treatment options
+Finance: Analyze query → retrieve market data + regulations + reports → synthesize
+Education: Assess student question → retrieve multiple explanations → personalize answer
+Enterprise: Complex document analysis → multi-agent collaboration → comprehensive report
+
+REFERENCES
+-----------
+- Survey Paper: https://arxiv.org/abs/2501.09136
+- GitHub Survey Repo: https://github.com/asinghcsu/AgenticRAG-Survey
+- A-RAG Hierarchical: https://arxiv.org/pdf/2602.03442
+- System 1 vs System 2 Agentic RAG: https://arxiv.org/pdf/2506.10408
+- MA-RAG Multi-Agent: https://arxiv.org/html/2505.20096v2
+- Fintech Agentic RAG: https://arxiv.org/html/2510.25518v1
+- Semantic Scholar: https://www.semanticscholar.org/paper/Agentic-Retrieval-Augmented-Generation:-A-Survey-on-Singh-Ehtesham/f1d6bb6b8f0273986094b5e166538a980c674fea

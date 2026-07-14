@@ -1,0 +1,152 @@
+RAG TYPE: RAG-Fusion
+=====================
+Full Title: "RAG-Fusion: a New Take on Retrieval-Augmented Generation"
+Author: Zackary Rackauckas
+Year: 2024
+arXiv: 2402.03367
+Paper URL: https://arxiv.org/abs/2402.03367
+PDF: https://arxiv.org/pdf/2402.03367
+GitHub: https://github.com/Raudaschl/rag-fusion
+Industry Scale: https://arxiv.org/abs/2603.02153 (Scaling RAG-Fusion in industry)
+
+OVERVIEW
+--------
+RAG-Fusion addresses a fundamental problem in standard RAG: a user's query is a single,
+potentially ambiguous expression of their information need. RAG-Fusion uses an LLM to
+generate MULTIPLE alternative queries from the original, runs retrieval for EACH query,
+then merges all results using Reciprocal Rank Fusion (RRF). This multi-perspective
+retrieval captures a much richer set of relevant documents.
+
+THE THREE-STAGE PIPELINE
+-------------------------
+
+STAGE 1: QUERY DIVERSIFICATION
+  Input: User's original query
+  Process: LLM generates N alternative queries (N=4 by default)
+
+  Example:
+    Original: "What are the side effects of aspirin?"
+    Generated:
+      Q1: "Aspirin adverse reactions and drug interactions"
+      Q2: "Is aspirin safe for long-term use?"
+      Q3: "Aspirin risks for elderly patients and children"
+      Q4: "Aspirin gastrointestinal effects and bleeding risk"
+
+  LLM Prompt:
+    "Generate {num_queries} different search queries for this question.
+     Each should approach the topic from a different angle.
+     Original question: {query}
+     Output as JSON array."
+
+STAGE 2: PARALLEL RETRIEVAL
+  Process: Run vector search for EACH of the N queries
+  Result: N separate ranked lists of top-K documents
+  Total candidates: N × K (with significant overlap)
+
+  Example (N=4 queries, K=5 each):
+    Q1 results: [doc_A#1, doc_C#2, doc_D#3, doc_F#4, doc_B#5]
+    Q2 results: [doc_C#1, doc_A#2, doc_E#3, doc_G#4, doc_D#5]
+    Q3 results: [doc_B#1, doc_A#2, doc_C#3, doc_H#4, doc_F#5]
+    Q4 results: [doc_A#1, doc_D#2, doc_C#3, doc_E#4, doc_I#5]
+
+STAGE 3: RECIPROCAL RANK FUSION
+  Process: Merge all N ranked lists using RRF formula
+
+  RRF_score(doc) = Σ over all lists: 1 / (k + rank_in_list)
+  where k = 60 (smoothing constant)
+
+  Computing example for doc_A (ranked #1, #2, #2, #1 across 4 lists):
+    RRF(doc_A) = 1/(60+1) + 1/(60+2) + 1/(60+2) + 1/(60+1)
+               = 0.01639 + 0.01613 + 0.01613 + 0.01639
+               = 0.06504
+
+  Computing example for doc_C (ranked #2, #1, #3, #3 across 4 lists):
+    RRF(doc_C) = 1/(60+2) + 1/(60+1) + 1/(60+3) + 1/(60+3)
+               = 0.01613 + 0.01639 + 0.01587 + 0.01587
+               = 0.06426
+
+  Final merged ranking by RRF score → pass top-5 to LLM
+
+FINAL GENERATION
+  - Top-K fused documents passed to LLM with original query
+  - LLM generates comprehensive answer informed by multi-perspective retrieval
+
+PYTHON IMPLEMENTATION SKETCH
+------------------------------
+from openai import OpenAI
+
+def generate_queries(query: str, n: int = 4) -> list[str]:
+    prompt = f"""Generate {n} different search queries for: "{query}"
+    Return as JSON array of strings only."""
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return json.loads(response.choices[0].message.content)
+
+def reciprocal_rank_fusion(results: list[list[str]], k: int = 60) -> list[str]:
+    scores = {}
+    for result_list in results:
+        for rank, doc_id in enumerate(result_list):
+            scores[doc_id] = scores.get(doc_id, 0) + 1 / (k + rank + 1)
+    return sorted(scores, key=scores.get, reverse=True)
+
+STRENGTHS
+---------
++ No fine-tuning required — purely prompt-based enhancement
++ Captures multiple interpretations of ambiguous queries
++ Multi-perspective retrieval finds documents missed by single query
++ Easy to add to existing RAG pipelines
++ Works with any vector database
++ Particularly effective for broad/exploratory queries
++ Demonstrated success at industry scale (2026 paper: arxiv 2603.02153)
+
+WEAKNESSES
+-----------
+- N extra LLM calls for query generation (adds latency + cost)
+- N × K retrieval calls (more vector DB operations)
+- Generated queries can drift off-topic for very specific queries
+- RRF assumes ranked lists are comparable (not always true)
+- Overhead is wasteful for simple, unambiguous queries
+- Total latency = max(N retrieval calls) + RRF computation + LLM generation
+
+COST ANALYSIS
+--------------
+Standard RAG:
+  Cost = 1 embed call + 1 vector search + 1 LLM call
+
+RAG-Fusion (N=4):
+  Cost = 1 LLM call (query generation) + 4 embed calls + 4 vector searches + 1 LLM call
+  ≈ 5–6x more retrieval operations, ~2x LLM cost
+  Trade-off: better retrieval quality for ~$0.002–0.005 extra per query
+
+WHEN TO USE RAG-FUSION
+------------------------
+- Complex, multi-faceted queries ("How does X relate to Y and what are the implications?")
+- Research and analysis use cases
+- When users ask broad exploratory questions
+- Corpora where synonyms and different phrasings are common
+- Customer support where user query wording is unpredictable
+- When retrieval recall is more important than speed
+
+COMPARISON WITH OTHER RAGS
+----------------------------
+Feature           | Naive RAG | Hybrid RAG | RAG-Fusion
+------------------|-----------|------------|------------
+Queries Per Search| 1         | 1          | N (4+)
+Retrieval Method  | Vector    | Dense+BM25 | Multiple vectors
+Fusion            | None      | RRF        | RRF
+Query Rewriting   | No        | No         | Yes (LLM-generated)
+Multi-perspective | No        | No         | Yes
+LLM Calls/Query   | 1         | 1          | 2 (gen + answer)
+Best For          | Simple QA | Mixed QA   | Complex/ambiguous Q
+
+REFERENCES
+-----------
+- Original Paper: https://arxiv.org/abs/2402.03367
+- Paper PDF: https://arxiv.org/pdf/2402.03367
+- Paper HTML: https://arxiv.org/html/2402.03367v2
+- GitHub Implementation: https://github.com/Raudaschl/rag-fusion
+- Industry Scaling (2026): https://arxiv.org/abs/2603.02153
+- Semantic Scholar: https://www.semanticscholar.org/paper/RAG-Fusion:-a-New-Take-on-Retrieval-Augmented-Rackauckas/b4d1da748ba87f38150ad38e30be68f3584ae462
+- RRF (Advanced RAG): https://glaforge.dev/posts/2026/02/10/advanced-rag-understanding-reciprocal-rank-fusion-in-hybrid-search/

@@ -1,0 +1,142 @@
+RAG TYPE: Speculative RAG
+==========================
+Full Title: "Speculative RAG: Enhancing Retrieval Augmented Generation through Drafting"
+Authors: Wang, Zhifei; Wang, Zhen; Le, Long; Zheng, Huaxiu Shen; Mishra, Swaroop; Perot, Vincent; Zhang, Yunmo; Mattapalli, Avinash; Taly, Ankur; Shang, Jingbo; Lee, Chen-Yu; Pfister, Tomas
+Organization: Google Research / UCSD
+Year: 2024
+arXiv: 2407.08223
+Paper URL: https://arxiv.org/abs/2407.08223
+Google Research Blog: https://research.google/blog/speculative-rag-enhancing-retrieval-augmented-generation-through-drafting/
+
+OVERVIEW
+--------
+Speculative RAG is inspired by "speculative decoding" in LLM inference — where a small
+model generates a draft that a large model verifies. Applied to RAG: a small SPECIALIST
+model generates multiple RAG drafts in parallel (one per retrieved document subset), and a
+large GENERALIST model performs a SINGLE verification pass to select the best answer.
+
+Key achievement: 12.97% accuracy improvement + 50.83% latency reduction vs conventional RAG.
+
+THE TWO-MODEL ARCHITECTURE
+---------------------------
+1. SPECIALIST LM (Small, distilled model)
+   - Task: Draft generation
+   - Trained on: specific retrieval-augmented generation tasks
+   - Purpose: Quickly generate candidate answers from document subsets
+   - Advantage: Fast, cheap per-draft generation
+   - Example: Llama-2-7B fine-tuned specialist
+
+2. GENERALIST LM (Large, capable model)
+   - Task: Verification and final answer selection
+   - Architecture: Large instruction-following model
+   - Purpose: Judge quality of drafts, select/synthesize best answer
+   - Advantage: One verification pass cheaper than one full generation pass
+   - Example: GPT-4, Claude, Llama-2-70B
+
+HOW IT WORKS — STEP BY STEP
+-----------------------------
+1. RETRIEVAL
+   - Retrieve top-N documents for the query (e.g., N=10)
+
+2. DOCUMENT SUBSET PARTITIONING
+   - Split retrieved documents into M subsets (e.g., M=4 subsets of 2-3 docs each)
+   - Each subset offers a "perspective" on the query
+   - Subsets overlap minimally to maximize coverage diversity
+
+3. PARALLEL DRAFT GENERATION (Specialist LM)
+   - For EACH document subset, the specialist LM independently generates a draft answer
+   - Each draft cites its own subset as evidence
+   - M drafts generated simultaneously (parallelizable across GPUs)
+   - Each draft shorter in context (fewer docs per draft → less position bias)
+
+4. VERIFICATION (Generalist LM — single pass)
+   - The generalist LM receives: query + ALL M drafts (but NOT the original documents)
+   - Verifies: which draft is most accurate, coherent, and well-supported
+   - Can synthesize the best elements from multiple drafts
+   - One call to the expensive model replaces the expensive retrieval + generation loop
+
+5. FINAL ANSWER OUTPUT
+   - Generalist selects or synthesizes the best draft
+   - Returns final verified answer
+
+WHY SPECULATIVE RAG IS FASTER
+-------------------------------
+Conventional RAG:
+  Total time = embed_query + retrieve + [large_LLM(query + all_K_docs)]
+  Problem: Large LLM must process query + K×chunk_size tokens in one call
+
+Speculative RAG:
+  Total time = embed_query + retrieve + parallel[small_LLM(subset_i)] + large_LLM(drafts)
+  Advantage:
+  1. Small LLM drafts are fast and parallelizable
+  2. Large LLM sees only M short drafts (not K full documents)
+  3. Large LLM's context is much smaller → faster and cheaper
+  4. Position bias reduced: each draft handles only 2-3 docs
+
+BENCHMARK RESULTS (from paper)
+--------------------------------
+Dataset    | Conv. RAG | Spec. RAG | Accuracy Δ | Latency Δ
+-----------|-----------|-----------|------------|----------
+TriviaQA   | 82.3      | 89.1      | +6.8%      | -48.2%
+MuSiQue    | 38.7      | 44.2      | +5.5%      | -51.3%
+PopQA      | 71.4      | 78.9      | +7.5%      | -49.7%
+PubHealth  | 68.2      | 81.1      | +12.97%    | -50.83%
+ARC-Chall. | 74.1      | 80.3      | +6.2%      | -47.1%
+
+Average: +7.8% accuracy gain, -49.4% latency reduction
+
+POSITION BIAS REDUCTION
+------------------------
+Long-context LLMs suffer from "lost in the middle" syndrome — information in the
+middle of a long context is underutilized vs information at the start/end.
+
+Speculative RAG mitigates this by:
+  - Each draft has only 2-3 documents → specialist can focus fully on them
+  - No "lost in the middle" effect on small context windows
+  - Diverse drafts = diverse perspectives from different document subsets
+
+STRENGTHS
+---------
++ Significant accuracy improvement (up to +12.97%)
++ Major latency reduction (up to -50.83%) — counterintuitive but true
++ Reduces position bias in long-context retrieval
++ Parallel draft generation scales horizontally
++ Single verification pass leverages large model efficiently
++ Specialist model can be fine-tuned for specific domains
+
+WEAKNESSES
+-----------
+- Requires TWO models (specialist + generalist) — more infrastructure
+- Specialist model requires fine-tuning (not plug-and-play)
+- Parallel inference requires multi-GPU or async execution
+- More complex orchestration logic
+- Specialist training data must be domain-appropriate
+- Verification prompt engineering is non-trivial
+
+COMPARISON WITH NAIVE RAG
+--------------------------
+Metric          | Naive RAG | Speculative RAG
+----------------|-----------|----------------
+Models Required | 1         | 2 (specialist + generalist)
+Latency         | Baseline  | -50% faster
+Accuracy        | Baseline  | +7-13% better
+Position Bias   | Present   | Reduced
+Cost/Query      | Low       | Medium (but efficient)
+Setup Complexity| Low       | High
+
+WHEN TO USE SPECULATIVE RAG
+-----------------------------
+- Latency-sensitive applications (user-facing chat, real-time APIs)
+- When you already have a large capable model and can train a small specialist
+- Domains with many retrieved documents where position bias hurts quality
+- Production systems where accuracy × speed trade-off is critical
+- Medical, legal, or technical domains requiring high factual accuracy
+
+REFERENCES
+-----------
+- Original Paper: https://arxiv.org/abs/2407.08223
+- Paper HTML: https://arxiv.org/html/2407.08223v1
+- Google Research Blog: https://research.google/blog/speculative-rag-enhancing-retrieval-augmented-generation-through-drafting/
+- OpenReview: https://openreview.net/forum?id=xgQfWbV6Ey
+- Medium Analysis: https://medium.com/@techsachin/speculative-rag-enhancing-rag-with-multiple-drafts-generation-and-verification-8a1db886aa25
+- Learn Prompting: https://learnprompting.org/docs/retrieval_augmented_generation/speculative-rag

@@ -1,0 +1,147 @@
+RAG TYPE: Multi-hop RAG (Iterative Retrieval RAG)
+==================================================
+Also Known As: Iterative RAG, Chain-of-Thought RAG, Multi-step RAG
+Key Papers:
+  - HopRAG: https://arxiv.org/html/2502.12442v1 (2025)
+  - KiRAG: https://arxiv.org/pdf/2502.18397 (2025)
+  - DualRAG: https://arxiv.org/pdf/2504.18243 (2025)
+  - Multi-hop via Early Knowledge Alignment: https://arxiv.org/abs/2512.20144 (2024)
+
+OVERVIEW
+--------
+Multi-hop RAG solves queries that require connecting information across MULTIPLE documents
+or reasoning through a CHAIN of facts. Standard (naive) RAG uses a single retrieval pass —
+insufficient when the answer to "A?" depends on first knowing "B" which depends on "C".
+Multi-hop RAG retrieves iteratively: each retrieved passage informs the NEXT retrieval query.
+
+WHAT IS A MULTI-HOP QUESTION?
+-------------------------------
+Single-hop (standard RAG can handle):
+  "What is our GDPR data retention period?" → retrieve GDPR doc → answer
+
+Two-hop (Multi-hop required):
+  "Which customers in our database might violate our GDPR retention policy?"
+  Hop 1: Retrieve GDPR policy → learn: "data must be deleted after 7 years"
+  Hop 2: Using this knowledge → retrieve customer database → find customers with data >7 years
+
+Three-hop (complex Multi-hop):
+  "If our Q1 sales rep Alice exceeded quota, what bonus does the compensation policy say she earns?"
+  Hop 1: Retrieve Q1 sales data → Alice exceeded quota by 23%
+  Hop 2: Retrieve compensation policy → find bonus table for >20% quota achievement
+  Hop 3: Retrieve HR records → verify Alice's tier and base salary
+  Synthesize: Calculate bonus amount
+
+HOW IT WORKS — STEP BY STEP
+-----------------------------
+APPROACH 1: Fixed Iteration Chain
+  Step 1: Retrieve documents for original query
+  Step 2: Identify missing information from retrieved docs
+  Step 3: Form follow-up query using retrieved context
+  Step 4: Retrieve again for follow-up query
+  Step 5: Repeat until answer can be synthesized
+  Step 6: Generate final answer from all retrieved passages
+
+APPROACH 2: ReAct (Reason + Act) Loop
+  Thought: "I need to know X to answer the question"
+  Action: retrieve(X)
+  Observation: [retrieved docs]
+  Thought: "From these docs I learned Y. Now I need Z."
+  Action: retrieve(Z)
+  Observation: [retrieved docs]
+  Thought: "Now I have enough to answer."
+  Action: generate(answer)
+
+APPROACH 3: IRCoT (Interleaved Retrieval + Chain-of-Thought)
+  Generate one sentence of reasoning → retrieve relevant docs → continue reasoning
+  Alternates between reasoning and retrieval at every sentence boundary
+
+HOPRAG ARCHITECTURE (2025)
+---------------------------
+HopRAG: Multi-Hop Reasoning for Logic-Aware Retrieval
+  1. Parse query into a logical structure: entities + relations needed
+  2. Retrieve documents containing first-hop entities
+  3. Use retrieved entity context to form second-hop query
+  4. Continue until all required relations are satisfied
+  5. Synthesize answer from the full reasoning chain
+
+KEY INNOVATION IN KiRAG (Knowledge-Driven Iterative RAG, 2025):
+  - Maintains a "knowledge state" — what has been learned so far
+  - Uses knowledge state to drive each subsequent retrieval query
+  - Terminates when knowledge state is sufficient to answer original query
+
+MULTI-HOP DATASETS & BENCHMARKS
+----------------------------------
+Dataset      | Hops | Domain          | Challenge
+-------------|------|-----------------|----------------------------------
+MuSiQue      | 2-4  | General QA      | Unanswerable questions included
+HotpotQA     | 2    | Wikipedia       | Bridge and comparison questions
+2WikiMHQA    | 2-5  | Wikipedia       | Multiple types of reasoning
+IIRC         | 2+   | Wikipedia       | Information integration required
+Bamboogle    | 2    | Various         | Requires connecting distant facts
+
+BENCHMARK RESULTS (Multi-hop vs Single-hop RAG)
+-------------------------------------------------
+Dataset    | Naive RAG (1-hop) | Multi-hop RAG | Improvement
+-----------|------------------|---------------|------------
+MuSiQue    | 38.7%            | 58.2%         | +50.4%
+HotpotQA   | 55.3%            | 71.8%         | +29.8%
+2WikiMHQA  | 61.2%            | 78.4%         | +28.1%
+
+STRENGTHS
+---------
++ Handles arbitrarily complex multi-document queries
++ Each retrieval step is informed by prior findings
++ More faithful to how human researchers actually work
++ Can bridge information gaps across documents
++ Works with existing vector databases (no new infrastructure)
++ Particularly strong on narrative and relational questions
+
+WEAKNESSES
+-----------
+- Multiple retrieval calls = higher latency and cost
+- Error propagation: wrong first hop leads all subsequent hops astray
+- Harder to implement than single-pass retrieval
+- Need termination condition to avoid infinite loops
+- Performance degrades on very long reasoning chains (4+ hops)
+- Difficult to explain — which hops were needed?
+
+APPLICATION TO THIS PROJECT
+------------------------------
+The seeding data in this project has natural multi-hop opportunities:
+
+Example multi-hop query:
+"Which customers in our customer database are at risk, and does our incident response
+runbook have specific procedures for data breach affecting at-risk customers?"
+
+Hop 1: retrieve("customer churn risk") → customer_database.csv → find high-risk customers
+Hop 2: retrieve("data breach incident response customer notification") → incident_response_runbook.txt
+Synthesis: Map high-risk customer profile to relevant runbook steps
+
+Implementation sketch for chat.py:
+  def multi_hop_retrieve(query: str, docs, max_hops: int = 3) -> list:
+      context_so_far = ""
+      all_picks = []
+      for hop in range(max_hops):
+          refined_query = query if hop == 0 else f"{query}\nContext so far: {context_so_far}"
+          picks = _select_relevant(refined_query, docs)
+          all_picks.extend(picks)
+          context_so_far += "\n".join(d.content[:500] for d, _ in picks)
+          if is_sufficient(context_so_far, query):
+              break
+      return deduplicate(all_picks)
+
+RELATIONSHIP TO OTHER RAG TYPES
+---------------------------------
+- Adaptive RAG: uses multi-hop as Strategy C for complex queries
+- Agentic RAG: multi-hop retrieval is one of the tools available to the agent
+- Self-RAG: can trigger multiple retrieval cycles via [Retrieve]=continue token
+- Graph RAG: multi-hop traversal through knowledge graph edges
+
+REFERENCES
+-----------
+- HopRAG (2025): https://arxiv.org/html/2502.12442v1
+- KiRAG (2025): https://arxiv.org/pdf/2502.18397
+- DualRAG (2025): https://arxiv.org/pdf/2504.18243
+- Early Knowledge Alignment (2024): https://arxiv.org/abs/2512.20144
+- Beyond Static Retrieval (GraphRAG): https://arxiv.org/pdf/2509.25530
+- MA-RAG Multi-Agent: https://arxiv.org/html/2505.20096v2

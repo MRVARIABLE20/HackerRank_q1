@@ -1,0 +1,131 @@
+RAG TYPE: Vector-less RAG (Keyword / Sparse Retrieval)
+=======================================================
+Also Known As: Sparse RAG, BM25 RAG, Keyword RAG, Lexical RAG
+Year: Predates neural RAG — BM25 dates to 1994; applied to RAG pipelines ~2021
+Key Algorithm: BM25 (Best Match 25), TF-IDF (Term Frequency-Inverse Document Frequency)
+
+OVERVIEW
+--------
+Vector-less RAG is retrieval-augmented generation that does NOT use vector embeddings or
+neural similarity search. Instead it relies on classical information retrieval techniques
+based on keyword frequency statistics. The retrieval component uses sparse representations
+(bag-of-words) rather than dense vectors, making it fast, interpretable, and exact-match
+friendly. No GPU or embedding model is required for retrieval.
+
+WHAT IS BM25?
+--------------
+BM25 is the industry-standard ranking function used by Elasticsearch, Apache Lucene,
+and most search engines. It scores documents based on:
+
+  Score(D, Q) = Σ IDF(qi) × [f(qi, D) × (k1 + 1)] / [f(qi, D) + k1 × (1 - b + b × |D|/avgDL)]
+
+Where:
+  - qi = each query term
+  - f(qi, D) = frequency of term qi in document D
+  - |D| = document length
+  - avgDL = average document length in corpus
+  - k1 = term saturation parameter (typically 1.2–2.0)
+  - b = length normalization parameter (typically 0.75)
+  - IDF(qi) = log[(N - n(qi) + 0.5) / (n(qi) + 0.5)]
+    where N = total documents, n(qi) = docs containing term qi
+
+HOW IT WORKS — STEP BY STEP
+-----------------------------
+1. INDEXING (Offline)
+   - Tokenize and normalize all documents (lowercase, stemming, stop-word removal)
+   - Build an inverted index: term → list of (doc_id, frequency) pairs
+   - Compute IDF weights for all terms
+   - No embedding model required
+
+2. RETRIEVAL (Online)
+   - Tokenize the query
+   - Look up each query term in the inverted index
+   - Score all matching documents using BM25 formula
+   - Return top-K highest scoring documents
+
+3. AUGMENTATION & GENERATION
+   - Same as Naive RAG: concatenate docs + query → LLM generates answer
+
+TECHNICAL IMPLEMENTATIONS
+--------------------------
+- BM25: rank-bm25 (Python), Elasticsearch, OpenSearch, Apache Solr, Whoosh
+- TF-IDF: scikit-learn TfidfVectorizer
+- Full-text: SQLite FTS5 (the backend already uses SQLite!)
+- Lucene-based: Apache Lucene, Solr, Elasticsearch
+
+STRENGTHS
+---------
++ Zero embedding cost — no GPU, no API calls for retrieval
++ Perfect for exact keyword matches (product codes, names, IDs, dates)
++ Highly interpretable — you can see exactly why a document was retrieved
++ Very fast — inverted index lookup is O(query terms)
++ Works well on short queries and domain-specific terminology
++ No embedding model drift over time
++ Deterministic and reproducible
++ Language-agnostic (works on any tokenizable language)
++ Lightweight — can run on minimal hardware
+
+WEAKNESSES / LIMITATIONS
+--------------------------
+- Cannot handle synonyms or paraphrases (semantic gap)
+  "car" vs "automobile" — BM25 treats as completely different terms
+- Vocabulary mismatch: query terms must appear in documents
+- No understanding of context or meaning
+- Poor on questions where wording differs from document wording
+- Cannot capture conceptual similarity
+- Word stemming can cause false matches
+
+BEST USE CASES
+--------------
+- Legal document retrieval (exact statute citations)
+- Medical records (ICD codes, drug names)
+- Code search (function names, error codes)
+- Financial data (ticker symbols, account numbers)
+- Enterprise search on structured/semi-structured corpora
+- FAQ systems where question wording is predictable
+- Low-resource environments with no GPU
+
+COMPARISON: BM25 vs VECTOR SEARCH
+-----------------------------------
+Aspect              | BM25 (Vector-less) | Vector (Dense)
+--------------------|-------------------|----------------------
+Retrieval Type      | Sparse / Exact    | Dense / Semantic
+Setup Cost          | Near-zero         | Embedding model required
+Query Understanding | Lexical only      | Semantic
+Synonym Handling    | Poor              | Good
+Exact Match         | Excellent         | Moderate
+Speed               | Very fast         | Fast (with ANN index)
+Interpretability    | High              | Low (black box)
+GPU Required        | No                | Sometimes (for embedding)
+Storage             | Inverted index    | Float32 vector matrix
+
+ENABLING VECTOR-LESS RAG IN THIS PROJECT
+-----------------------------------------
+The current project (backend/app/routers/chat.py) uses pure vector RAG.
+To add BM25 retrieval, add to requirements.txt:
+  rank-bm25
+
+Then replace the cosine similarity retrieval with:
+  from rank_bm25 import BM25Okapi
+  tokenized_corpus = [doc.content.lower().split() for doc in docs]
+  bm25 = BM25Okapi(tokenized_corpus)
+  scores = bm25.get_scores(query.lower().split())
+
+SQLite FTS5 alternative (no new dependencies):
+  CREATE VIRTUAL TABLE kb_fts USING fts5(title, content);
+  SELECT * FROM kb_fts WHERE kb_fts MATCH 'your query' ORDER BY rank;
+
+WHEN TO USE VECTOR-LESS RAG
+-----------------------------
+- Document IDs, codes, or exact names must be retrieved
+- No access to embedding API (offline / air-gapped environments)
+- When cost is a strict constraint
+- Small, uniform corpora with predictable vocabulary
+- As the sparse component in a Hybrid RAG system
+
+REFERENCES
+-----------
+- BM25 Algorithm (Robertson & Zaragoza, 2009): https://dl.acm.org/doi/10.1561/1500000019
+- rank-bm25 Python library: https://github.com/dorianbrown/rank_bm25
+- SQLite FTS5: https://www.sqlite.org/fts5.html
+- Comparison Study: https://medium.com/data-science-collective/advanced-rag-techniques-concepts-e0b67366c5cf

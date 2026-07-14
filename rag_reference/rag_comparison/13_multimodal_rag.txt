@@ -1,0 +1,154 @@
+RAG TYPE: Multimodal RAG
+=========================
+Also Known As: Visual RAG, Vision RAG, MMRAG, VisRAG
+Key Papers:
+  - VisRAG (ICLR 2025): https://arxiv.org/abs/2410.10594
+  - VisRAG 2.0 (2025): https://arxiv.org/pdf/2510.09733
+  - BayesRAG (2026): https://arxiv.org/pdf/2601.07329
+  - Multimodal RAG Survey: https://arxiv.org/html/2510.15253v2
+  - RAG-Anything: https://github.com/HKUDS/RAG-Anything
+
+OVERVIEW
+--------
+Multimodal RAG extends the retrieval-augmented generation paradigm beyond text to include
+IMAGES, TABLES, CHARTS, DIAGRAMS, AUDIO, VIDEO, and EQUATIONS as both retrieval sources
+and query inputs. Instead of converting visual content to text (OCR → parse → embed text),
+Multimodal RAG uses Vision-Language Models (VLMs) to understand documents AS IMAGES,
+preserving visual structure that OCR would destroy (charts, tables, equations, diagrams).
+
+KEY INSIGHT: When you OCR a financial chart, you lose the visual trend. When you parse a
+complex table, you lose formatting. Multimodal RAG processes the image directly.
+
+TYPES OF MULTIMODAL CONTENT
+-----------------------------
+Type        | Example in this project    | Challenge with text-only RAG
+------------|---------------------------|------------------------------
+Images      | Screenshots, diagrams      | OCR misses spatial relationships
+Tables      | CSV data as visual tables  | Alignment and structure lost
+Charts      | Performance graphs         | Trend and pattern information lost
+PDFs        | Research papers with figs  | Mixed text + figure context broken
+Equations   | GenAI Notes.pdf formulas   | LaTeX rendering context lost
+Flowcharts  | Architecture diagrams      | Relationship arrows not captured
+
+VisRAG — VISION-BASED RAG PIPELINE (ICLR 2025)
+-------------------------------------------------
+VisRAG is the foundational multimodal RAG paper. It eliminates the text extraction step
+entirely by treating document PAGES as images throughout the entire pipeline.
+
+Architecture:
+  1. INDEXING: Convert each document page → image (PNG/JPEG)
+  2. EMBEDDING: Use Vision-Language Model (VLM) in dual-encoder mode to embed page images
+     - VisRAG-Ret: MiniCPM-V based visual retriever
+     - Input: page image → dense visual embedding vector
+     - No OCR, no text parsing — raw visual representation
+
+  3. RETRIEVAL: Cosine similarity on visual embeddings → top-K page images
+  4. GENERATION: VLM reads retrieved page images + query → generates answer
+
+VisRAG vs Text-based RAG:
+  Text RAG: PDF → OCR → text chunks → embed text → retrieve text → text LLM
+  VisRAG:   PDF → page images → embed images → retrieve images → VLM reads images
+
+PERFORMANCE RESULTS (from VisRAG paper):
+  "VisRAG outperforms traditional text-based RAG by 20-40% end-to-end"
+  Particularly strong on: charts (58% vs 34%), mixed-layout docs (71% vs 49%)
+
+VisRAG 2.0 — MULTI-IMAGE REASONING (2025)
+-------------------------------------------
+VisRAG 2.0 extends to multi-page evidence gathering:
+  - Evidence-Guided Multi-Image Reasoning
+  - VLM identifies which parts of each page image are relevant
+  - Synthesizes answer from multiple visual evidence snippets
+  - R1-Router: reinforcement learning for deciding when/where to retrieve images
+
+BayesRAG — PROBABILISTIC MULTIMODAL (2026)
+--------------------------------------------
+BayesRAG introduces probabilistic mutual evidence corroboration:
+  - Multiple modalities (text + image + table) are retrieved independently
+  - Bayesian fusion: P(answer | text_evidence, image_evidence, table_evidence)
+  - Evidence from different modalities corroborates or contradicts each other
+  - Higher confidence when text AND image evidence agree
+  - Lower confidence (triggers re-retrieval) when modalities disagree
+
+RAG-ANYTHING — ALL-IN-ONE (2026)
+----------------------------------
+RAG-Anything: unified framework for text, images, tables, equations
+  - Single pipeline handles all content types
+  - Hybrid search: KG links (explicit) + vector similarity (semantic)
+  - Multimodal query: "Show me all charts where the error rate exceeds 5%"
+  - Source: https://github.com/HKUDS/RAG-Anything
+
+OTHER MULTIMODAL SYSTEMS
+--------------------------
+M3DocRAG: ColPali indexing + VLM visual question answering on multi-page documents
+ViDoRAG: Multi-agent iterative reasoning over video content (EMNLP 2025)
+VisDoMRAG: Runs visual AND textual RAG pipelines in parallel (NAACL 2025)
+mKG-RAG: Multimodal knowledge graph — entities extracted from both text and images
+
+MULTIMODAL MODELS USED IN RAG
+-------------------------------
+Retrieval:
+  - ColPali: Image-based document retrieval model
+  - VisRAG-Ret: MiniCPM-V dual-encoder for page retrieval
+  - CLIP: Image-text embedding alignment
+
+Generation:
+  - GPT-4o (Vision): Multi-image understanding
+  - Claude 3.5 (Vision): Document + image comprehension
+  - MiniCPM-V: Efficient VLM for edge deployment
+  - LLaVA: Open-source VLM
+
+APPLICATION TO THIS PROJECT
+-----------------------------
+This project's seeding data includes PDFs with figures, charts, and tables:
+  - seeding_data/pdfs/Fine Tuning Flan-T5 LLM with RL.pdf (research paper with figures)
+  - seeding_data/pdfs/GenAi Notes.pdf (diagrams and concept maps)
+  - seeding_data/pdfs/Research Paper - AI in Compliance.pdf (charts and tables)
+  - seeding_data/json_logs/*.json (data visualized as tables)
+
+Currently these are uploaded as extracted text, losing all visual information.
+Multimodal RAG would let users query: "Show me the training loss curve from the Flan-T5 paper"
+
+Integration path:
+  1. Install: pip install colpali-engine
+  2. Convert PDF pages to images: pdf2image
+  3. Embed with ColPali: colpali_model.encode(page_images)
+  4. Store in Qdrant with image vectors
+  5. At query time: embed query → retrieve page images → GPT-4o reads images
+
+STRENGTHS
+---------
++ No information loss from OCR/parsing errors
++ Handles charts, diagrams, mathematical equations natively
++ 20-40% better accuracy than text-based RAG on visual documents
++ Natural query interface: "Show me the architecture diagram"
++ Handles multi-modal queries: combine text question + image input
+
+WEAKNESSES
+-----------
+- High infrastructure cost: VLM inference > text LLM inference
+- Large storage: page images >> text embeddings
+- Slower retrieval: visual embeddings are larger (1024+ dimensions)
+- Requires GPU for VLM inference
+- Fewer available models than text RAG ecosystem
+- Multi-image context window limits still restrictive
+
+BENCHMARK (VisRAG paper, ICLR 2025)
+--------------------------------------
+Content Type      | Text RAG | VisRAG | Gain
+------------------|----------|--------|------
+Text-heavy pages  | 72%      | 78%    | +8%
+Chart pages       | 34%      | 58%    | +71%
+Table pages       | 45%      | 63%    | +40%
+Mixed layout      | 49%      | 71%    | +45%
+Math equations    | 21%      | 52%    | +148%
+
+REFERENCES
+-----------
+- VisRAG Paper (ICLR 2025): https://arxiv.org/abs/2410.10594
+- VisRAG PDF: https://arxiv.org/pdf/2410.10594
+- VisRAG 2.0: https://arxiv.org/pdf/2510.09733
+- BayesRAG: https://arxiv.org/pdf/2601.07329
+- Multimodal RAG Survey: https://arxiv.org/html/2510.15253v2
+- RAG-Anything GitHub: https://github.com/HKUDS/RAG-Anything
+- Awesome RAG Vision: https://github.com/zhengxuJosh/Awesome-RAG-Vision

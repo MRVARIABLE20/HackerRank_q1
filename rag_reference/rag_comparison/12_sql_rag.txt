@@ -1,0 +1,170 @@
+RAG TYPE: SQL RAG (Structured Data RAG / Text-to-SQL RAG)
+==========================================================
+Also Known As: Text-to-SQL RAG, Structured RAG, Database RAG, TableRAG
+Key Papers:
+  - Text-to-SQL Survey: https://arxiv.org/html/2410.01066v2 (2024)
+  - Next-Gen Database Interfaces: https://arxiv.org/pdf/2406.08426 (2024)
+  - Balancing Content in RAG-Text2SQL: https://arxiv.org/pdf/2502.15723 (2025)
+  - Evaluating RAG variants for SQL: https://arxiv.org/html/2602.07086v1 (2026)
+  - TARGET Benchmark: https://arxiv.org/pdf/2505.11545 (2025)
+
+OVERVIEW
+--------
+SQL RAG retrieves information from structured relational databases (SQL), CSVs, or tabular
+data rather than from unstructured text documents. The LLM acts as a natural language
+to SQL translator: it reads the database schema, converts the user's question into a SQL
+query, executes it, and then uses the structured query result as context for generating
+a natural language answer.
+
+KEY DIFFERENCE FROM VECTOR RAG:
+  Vector RAG: Query → Embed → Semantic search → Top-K text chunks → LLM
+  SQL RAG:    Query → Schema understanding → SQL generation → Execute → Structured result → LLM
+
+WHAT SQL RAG CAN DO THAT VECTOR RAG CANNOT
+--------------------------------------------
+1. Exact numeric aggregations:
+   "What was the total revenue from APAC in Q1 2026?" → SUM(revenue) WHERE region='APAC'
+   Vector RAG would retrieve chunks mentioning "APAC revenue" — might miss the exact total
+
+2. Filtering on structured attributes:
+   "Show me all customers with health score below 60 and ARR over $100K"
+   → SELECT * FROM customers WHERE health_score < 60 AND arr > 100000
+   Vector RAG cannot filter structured data
+
+3. Joins across tables:
+   "Which sales reps handled accounts that are now at-risk?"
+   → JOIN sales_q1 ON customers ON account_id WHERE health_score < 50
+
+4. Time-series queries:
+   "Show month-over-month growth in API error rate Q1 2026"
+   → Time-series aggregation on app_performance_q1_2026.json
+
+HOW IT WORKS — STEP BY STEP
+-----------------------------
+1. SCHEMA RETRIEVAL
+   - Fetch database schema: table names, column names, data types, sample rows
+   - Optionally: retrieve relevant table schemas using semantic search
+     (for large databases with hundreds of tables)
+
+2. SQL GENERATION (LLM)
+   - Prompt includes: user query + database schema + few-shot SQL examples
+   - LLM generates a SQL query string
+   - Example prompt:
+     "You are a SQL expert. Given this schema:
+      CREATE TABLE customers (id INT, name TEXT, arr FLOAT, health_score INT, tier TEXT, region TEXT)
+      Write a SQL query to: Find all Enterprise tier customers in APAC with health score below 70"
+   - LLM output: SELECT * FROM customers WHERE tier='Enterprise' AND region='APAC' AND health_score < 70
+
+3. SQL EXECUTION
+   - Execute generated SQL against actual database
+   - Handle errors: if SQL fails, optionally retry with error message in context
+   - Return result set as JSON or formatted table
+
+4. RESULT AUGMENTATION
+   - Format SQL results into readable context
+   - Include column names, row counts, important values
+
+5. NATURAL LANGUAGE GENERATION
+   - LLM receives: original question + SQL query used + query results
+   - Generates: natural language answer with specific data references
+   - Example output: "3 Enterprise customers in APAC have health scores below 70:
+     Acme Corp (health: 62, ARR: $450K), Beta Ltd (health: 55, ARR: $230K)..."
+
+SCHEMA LINKING & RAG FOR LARGE DATABASES
+------------------------------------------
+For databases with hundreds of tables, SQL RAG adds a RAG step for schema retrieval:
+
+  1. Embed all table descriptions and column descriptions
+  2. Query: semantic search over schema embeddings to find relevant tables
+  3. Include only relevant table schemas in the SQL generation prompt
+  4. This is "RAG over schema" — a meta-level retrieval step
+
+CURRENT PROJECT SQL DATA
+--------------------------
+The project contains two CSV files ideal for SQL RAG:
+
+seeding_data/sql_csv/customer_database.csv:
+  Columns: id, company, tier, arr, health_score, region, csm_owner, churn_risk
+  Queries enabled: "Which enterprise customers have high churn risk?"
+
+seeding_data/sql_csv/sales_q1_2026.csv:
+  Columns: deal_id, rep, region, product, arr, close_date, stage, probability
+  Queries enabled: "What was total Q1 revenue by region?"
+
+seeding_data/operational/infrastructure_health_may_2026.csv:
+  Infrastructure metrics: availability, latency, error rates by service
+
+These are currently uploaded as plain text — SQL RAG would allow precise numeric queries.
+
+IMPLEMENTATION FOR THIS PROJECT
+---------------------------------
+Adding SQL RAG to backend/app/routers/chat.py:
+
+  import sqlite3, pandas as pd
+
+  def sql_rag_query(query: str) -> str:
+      # Load CSVs into in-memory SQLite
+      conn = sqlite3.connect(":memory:")
+      pd.read_csv("seeding_data/sql_csv/customer_database.csv").to_sql("customers", conn)
+      pd.read_csv("seeding_data/sql_csv/sales_q1_2026.csv").to_sql("sales", conn)
+
+      # Get schema
+      schema = conn.execute("SELECT sql FROM sqlite_master WHERE type='table'").fetchall()
+
+      # Generate SQL via LLM
+      sql_prompt = f"Schema: {schema}\nQuestion: {query}\nWrite the SQL query:"
+      sql_query = call_llm(sql_prompt)
+
+      # Execute
+      result = pd.read_sql(sql_query, conn).to_string()
+      return result
+
+  # Detect structured queries
+  def route_query(query: str, all_docs, conn):
+      if any(word in query.lower() for word in ["total", "count", "sum", "average", "how many"]):
+          return sql_rag_query(query)  # SQL route
+      else:
+          return vector_rag_query(query, all_docs)  # Vector route
+
+HYBRID: VECTOR + SQL RAG
+--------------------------
+Many production systems combine both:
+  1. Classify query: structured (SQL) vs unstructured (vector)
+  2. Route accordingly — or run both and merge context
+  3. Graph RAG for Text-to-SQL (2026): use KG of schema relationships to improve SQL gen
+
+STRENGTHS
+---------
++ Perfect for exact numeric aggregations, filters, and joins
++ Handles "how many", "total", "average", "compare" queries perfectly
++ Results are precise — no hallucinated numbers
++ Works on frequently-updated data (real-time database queries)
++ No embedding needed for structured columns
++ Reproducible: same query always returns same result
+
+WEAKNESSES
+-----------
+- LLM SQL generation can fail for complex queries
+- Schema must be exposed to LLM (potential security concern)
+- Cannot handle semantic/conceptual questions ("What are the trends?")
+- Requires structured data — doesn't work on free-text columns
+- SQL injection risk if user input is not sanitized before execution
+- Multi-table joins can be unreliable with weak LLMs
+
+BENCHMARK (from TARGET paper, 2025)
+-------------------------------------
+System              | Table Retrieval F1 | Ans. Accuracy
+--------------------|-------------------|---------------
+BM25 baseline       | 62.3              | 45.1
+Vector RAG          | 71.8              | 53.2
+SQL RAG (Text2SQL)  | N/A               | 78.4 (structured Qs only)
+Hybrid Vector+SQL   | 74.2              | 71.3
+
+REFERENCES
+-----------
+- Text-to-SQL Survey (2024): https://arxiv.org/html/2410.01066v2
+- Next-Gen Database Interfaces: https://arxiv.org/pdf/2406.08426
+- Balancing Content RAG-Text2SQL: https://arxiv.org/pdf/2502.15723
+- Evaluating RAG Variants for SQL (2026): https://arxiv.org/html/2602.07086v1
+- TARGET Benchmark: https://arxiv.org/pdf/2505.11545
+- LLM Text-to-SQL Models: https://promethium.ai/guides/llm-ai-models-text-to-sql/

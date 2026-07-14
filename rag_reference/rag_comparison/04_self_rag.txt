@@ -1,0 +1,132 @@
+RAG TYPE: Self-RAG (Self-Reflective RAG)
+==========================================
+Full Title: "Self-RAG: Learning to Retrieve, Generate, and Critique through Self-Reflection"
+Authors: Akari Asai, Zeqiu Wu, Yizhong Wang, Avirup Sil, Hannaneh Hajishirzi
+Year: 2023 (published at NeurIPS 2023)
+arXiv: 2310.11511
+Paper URL: https://arxiv.org/abs/2310.11511
+PDF: https://arxiv.org/pdf/2310.11511
+HuggingFace: https://huggingface.co/papers/2310.11511
+
+OVERVIEW
+--------
+Self-RAG is a framework that trains a single language model to adaptively retrieve passages
+ON-DEMAND and generate text while simultaneously REFLECTING on its own output quality.
+Unlike conventional RAG which always retrieves a fixed K documents regardless of need,
+Self-RAG uses special "reflection tokens" to control WHEN to retrieve, WHETHER the
+retrieved documents are relevant, and WHETHER the generated answer is supported by evidence.
+
+The core innovation: the LLM itself becomes the judge of retrieval necessity and answer quality.
+
+REFLECTION TOKENS
+------------------
+Self-RAG introduces 4 types of special tokens trained into the LLM:
+
+1. [Retrieve] — Should the model retrieve at all?
+   Values: yes / no / continue
+   Purpose: Avoid unnecessary retrieval for simple factual queries
+
+2. [ISREL] — Is the retrieved document relevant?
+   Values: relevant / irrelevant
+   Purpose: Filter out off-topic retrieved passages
+
+3. [ISSUP] — Is the generated segment supported by the retrieved passage?
+   Values: fully supported / partially supported / no support
+   Purpose: Detect hallucinations grounded in the retrieved text
+
+4. [ISUSE] — Is the response useful for the user's question?
+   Values: 1 / 2 / 3 / 4 / 5 (rating scale)
+   Purpose: Overall answer quality assessment
+
+HOW IT WORKS — STEP BY STEP
+-----------------------------
+1. ADAPTIVE RETRIEVAL DECISION
+   - LLM receives query, generates [Retrieve] token
+   - If [Retrieve]=no → answer directly without retrieval (simple factual question)
+   - If [Retrieve]=yes → fetch top-K documents from retrieval system
+
+2. PARALLEL GENERATION WITH RETRIEVED DOCS
+   - For each retrieved document, LLM generates a candidate response segment
+   - After each segment, generates [ISREL] and [ISSUP] tokens for that document
+   - Multiple candidate responses generated in parallel
+
+3. CRITIQUE AND SELECTION
+   - All candidates scored using reflection token predictions
+   - Best candidate selected based on combined [ISSUP] + [ISUSE] score
+   - Model can decide to retrieve more passages if [ISSUP]=no support
+
+4. FINAL GENERATION
+   - Selected response returned to user with implicit citation support
+
+TRAINING METHODOLOGY
+---------------------
+Self-RAG requires fine-tuning an LLM (not just prompting):
+1. Use a critic LLM (GPT-4) to annotate training data with reflection tokens
+2. Fine-tune the target LLM on this annotated data
+3. The fine-tuned model learns to generate reflection tokens naturally
+
+Pre-trained Self-RAG models available:
+  - selfrag/selfrag_llama2_7b (HuggingFace)
+  - selfrag/selfrag_llama2_13b (HuggingFace)
+
+BENCHMARK RESULTS
+------------------
+Task             | ChatGPT | RAG+Llama2 | Self-RAG 7B | Self-RAG 13B
+-----------------|---------|------------|-------------|-------------
+Open-domain QA   | 72.5    | 74.3       | 78.9        | 82.1
+Fact Verification| 58.3    | 61.2       | 74.6        | 76.4
+Long-form Gen    | 62.1    | 65.8       | 71.3        | 74.2
+(Citation Acc.)  | 45.2    | 52.1       | 71.8        | 74.9
+
+Self-RAG 7B significantly outperforms ChatGPT and RAG+Llama2 on all tasks.
+
+STRENGTHS
+---------
++ Adaptive retrieval — only retrieves when necessary (saves cost)
++ Built-in hallucination detection via [ISSUP] tokens
++ Higher factual accuracy and citation precision than standard RAG
++ Flexible: inference-time control of reflection token weights
++ Single unified model (no separate evaluator component)
++ Outperforms RAG+Llama2-chat at same model size
+
+WEAKNESSES
+-----------
+- Requires fine-tuning a dedicated model (not plug-and-play)
+- Slower than standard RAG (multiple candidate generations)
+- Training complexity: needs GPT-4 to annotate training data
+- Not a drop-in replacement — needs the selfrag model specifically
+- Inference cost: generates multiple candidates per query
+- Limited to supported model sizes (7B, 13B)
+
+COMPARISON WITH OTHER RAGS
+----------------------------
+Feature           | Naive RAG | CRAG   | Self-RAG
+------------------|-----------|--------|----------
+Retrieval Control | Fixed K   | Scored | Adaptive (tokens)
+Hallucination Det.| None      | Eval   | Built-in tokens
+Multi-candidate   | No        | No     | Yes
+Fine-tuning req.  | No        | No     | Yes (required)
+Interpretability  | Low       | Medium | High (tokens)
+Cost              | Low       | Medium | High (training)
+
+INTEGRATION WITH THIS PROJECT
+-------------------------------
+Self-RAG cannot be directly swapped into the current project because:
+1. It requires a specialized fine-tuned model (selfrag_llama2_7b)
+2. OpenRouter does not serve selfrag models
+3. It requires generating reflection tokens during inference
+
+Theoretical integration path:
+- Host selfrag/selfrag_llama2_7b via vLLM or HuggingFace Inference API
+- Replace _call_openrouter() in chat.py with selfrag inference
+- Parse [Retrieve], [ISREL], [ISSUP] tokens from model output
+
+REFERENCES
+-----------
+- Original Paper: https://arxiv.org/abs/2310.11511
+- Paper PDF: https://arxiv.org/pdf/2310.11511
+- ar5iv readable version: https://ar5iv.labs.arxiv.org/html/2310.11511
+- HuggingFace Models: https://huggingface.co/selfrag
+- Project Repo: https://github.com/AkariAsai/self-rag
+- NeurIPS 2023 Proceedings: https://openreview.net/pdf?id=hSyW5go0v8
+- ProjectPro Guide: https://www.projectpro.io/article/self-rag/1176

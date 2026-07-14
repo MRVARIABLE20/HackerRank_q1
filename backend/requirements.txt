@@ -1,0 +1,31 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0   # ASGI server — run via `python -m uvicorn`, never imported directly
+pydantic>=2.9.0
+pydantic[email]>=2.9.0      # email-validator — required by schemas.py's EmailStr field
+pydantic-settings>=2.5.0
+python-jose[cryptography]>=3.3.0
+bcrypt>=4.2.0
+python-multipart>=0.0.9    # required by FastAPI's Form()/File() (routers/upload.py) — never imported directly
+sqlalchemy>=2.0.35
+httpx>=0.27.0
+
+# RAG stack
+rank-bm25>=0.2.2
+pymupdf>=1.25.1
+pandas>=2.2.0               # DuckDB's .df()/.fillna()/.to_string() in rag/sql.py — never imported directly
+duckdb>=1.1.0
+
+# Corrective RAG (05) + Agentic RAG (10) — web search fallback
+tavily-python>=0.3.0
+
+# Multimodal RAG (13) — image handling
+pillow>=10.4.0               # PyAV's frame.to_image() returns a PIL Image (rag/core.py) — never imported directly
+
+# Multimodal RAG (13) — video understanding: audio transcription (faster-whisper,
+# bundles PyAV for ffmpeg-free decoding) + sampled-frame extraction (av)
+faster-whisper>=1.0.0
+av>=11.0.0
+
+# Dev / test
+pytest>=8.3.0                # required by tests/test_all_rags.py
+ruff>=0.6.0

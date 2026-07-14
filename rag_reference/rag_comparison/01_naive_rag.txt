@@ -1,0 +1,126 @@
+RAG TYPE: Naive RAG (Baseline)
+===============================
+Also Known As: Standard RAG, Basic RAG, Vanilla RAG
+Year Introduced: 2020 (Lewis et al., Facebook AI)
+Foundational Paper: "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" — arxiv.org/abs/2005.11401
+
+OVERVIEW
+--------
+Naive RAG is the original and simplest form of Retrieval-Augmented Generation. It follows a
+fixed three-step pipeline: Retrieve → Augment → Generate. The user query is embedded into a
+vector, a similarity search is run against a pre-indexed document store, the top-K most
+similar chunks are retrieved, and they are concatenated with the query before being passed
+to the LLM for generation.
+
+HOW IT WORKS — STEP BY STEP
+-----------------------------
+1. INDEXING (Offline Phase)
+   - Split documents into fixed-size chunks (e.g., 512 tokens)
+   - Embed each chunk using a text embedding model (e.g., text-embedding-3-small)
+   - Store all chunk embeddings in a vector database (e.g., FAISS, Pinecone, ChromaDB)
+
+2. RETRIEVAL (Online Phase)
+   - Embed the user query using the same embedding model
+   - Run cosine similarity or dot-product search against the vector store
+   - Retrieve the top-K most similar chunks (K is typically 3–10)
+
+3. AUGMENTATION
+   - Concatenate retrieved chunks into a context block
+   - Prepend a system prompt instructing the LLM to use only provided context
+
+4. GENERATION
+   - Pass the augmented prompt (context + query) to the LLM
+   - LLM generates an answer grounded in the retrieved context
+
+TECHNICAL SPECS (Typical Implementation)
+-----------------------------------------
+- Embedding Model: text-embedding-3-small (OpenAI), bge-large-en (BAAI), or sentence-transformers
+- Vector DB: FAISS (local), Pinecone, Weaviate, Qdrant, ChromaDB
+- Chunk Size: 256–1024 tokens with 10–20% overlap
+- Top-K: 3–10 documents
+- Similarity Metric: Cosine similarity or dot product
+- LLM: Any instruction-following model (GPT-4, Claude, Llama 3, Mistral)
+
+STRENGTHS
+---------
++ Simple to implement — minimal engineering overhead
++ Deterministic retrieval — same query always finds same documents
++ No LLM calls needed during retrieval — fast and cheap
++ Works well on small, well-curated corpora
++ Easy to debug — every step is observable
++ Good baseline for measuring improvements
+
+WEAKNESSES / LIMITATIONS
+--------------------------
+- Single retrieval pass — cannot refine based on initial results
+- No query understanding or rewriting — poor performance on ambiguous queries
+- Fixed chunk size creates boundary problems (context cut mid-sentence)
+- Cannot handle multi-hop questions (answer spans multiple documents)
+- Retrieves documents even when retrieval is unnecessary (no adaptive logic)
+- Cosine similarity ≠ relevance for all query types
+- Position bias in LLM — chunks at start/end of context get more attention
+- No mechanism to detect or correct hallucinations
+- Embedding model drift — embeddings get stale as documents update
+- Does not distinguish exact keyword matches from semantic matches
+
+BENCHMARK PERFORMANCE
+----------------------
+Task              | Naive RAG Score | Notes
+------------------|-----------------|-----------------------------
+Open-domain QA    | Moderate        | Loses to Self-RAG, CRAG
+Multi-hop QA      | Poor            | Single pass cannot chain facts
+Fact Verification | Moderate        | No correction mechanism
+Long-form Gen     | Moderate        | Citation accuracy low
+Closed-domain Q&A | Good            | Works well on curated corpora
+
+THIS PROJECT'S IMPLEMENTATION
+-------------------------------
+File: backend/app/routers/chat.py
+Embedding Model: openai/text-embedding-3-small (via OpenRouter)
+Top-K: 6 documents
+Similarity: Cosine similarity (manual dot-product + magnitude)
+Vector Store: In-process Python dict (_embed_cache) — no persistent vector DB
+Chunk Strategy: Full document content (first 512 chars for embedding)
+Database: SQLite (KBDocument table)
+
+The project's implementation is pure Naive RAG. Every chat request:
+  1. Loads ALL KBDocuments from SQLite
+  2. Embeds uncached documents (batched in groups of 100)
+  3. Scores each doc against the query via cosine similarity
+  4. Picks top-6 scoring docs
+  5. Passes them as context to the LLM
+
+WHEN TO USE NAIVE RAG
+----------------------
+- Small, well-maintained document collections (<10,000 docs)
+- Closed-domain applications (company wikis, product docs)
+- Prototype / proof-of-concept stage
+- Admin-curated knowledge bases where document quality is guaranteed
+- When simplicity and debuggability matter more than peak accuracy
+
+UPGRADE PATH FROM NAIVE RAG
+-----------------------------
+Naive → Advanced RAG: Add query rewriting + reranker
+Naive → Hybrid RAG: Add BM25 alongside vector search
+Naive → Adaptive RAG: Add complexity classifier to skip retrieval when unnecessary
+Naive → Self-RAG: Train model to issue reflection tokens
+Naive → Corrective RAG: Add retrieval quality evaluator
+
+COMPARISON METRICS
+-------------------
+Metric            | Naive RAG | Description
+------------------|-----------|-------------------------------------
+Implementation    | Easy      | ~50 lines of Python
+Latency           | Low       | One embed call + similarity search
+Cost              | Low       | One embed + one LLM call
+Multi-hop Support | No        | Single retrieval pass only
+Hallucination Ctrl| None      | No verification mechanism
+Structured Data   | Poor      | Cannot query CSVs or databases
+Accuracy (QA)     | Moderate  | Baseline for all RAG comparisons
+
+REFERENCES
+-----------
+- Original RAG Paper (Lewis et al., 2020): https://arxiv.org/abs/2005.11401
+- RAG Survey (Gao et al., 2023): https://arxiv.org/abs/2312.10997
+- Advanced RAG Techniques: https://medium.com/data-science-collective/advanced-rag-techniques-concepts-e0b67366c5cf
+- This Project's Implementation: backend/app/routers/chat.py (lines 82-112)

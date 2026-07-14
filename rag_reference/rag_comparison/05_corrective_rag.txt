@@ -1,0 +1,158 @@
+RAG TYPE: Corrective RAG (CRAG)
+================================
+Full Title: "Corrective Retrieval Augmented Generation"
+Authors: Shi-Qi Yan, Jia-Chen Gu, Yun Zhu, Zhen-Hua Ling
+Year: 2024
+arXiv: 2401.15884
+Paper URL: https://arxiv.org/abs/2401.15884
+PDF: https://arxiv.org/pdf/2401.15884
+Open-Source Reproduction: https://arxiv.org/abs/2603.16169
+
+OVERVIEW
+--------
+Corrective RAG (CRAG) addresses a critical weakness in standard RAG: retrieval can
+sometimes return irrelevant or misleading documents, and the LLM will still use them
+to generate an answer — leading to hallucinations. CRAG adds a lightweight retrieval
+EVALUATOR that assesses the quality of retrieved documents before they reach the LLM.
+Based on the evaluation, CRAG follows one of three branches: Correct, Incorrect, or Ambiguous.
+
+KEY INNOVATION: The system corrects bad retrieval BEFORE generation — plug-and-play,
+no LLM fine-tuning required.
+
+THE THREE BRANCHES
+-------------------
+CRAG evaluates retrieved documents and routes to one of three actions:
+
+1. CORRECT (High confidence retrieval)
+   - Retrieved documents are clearly relevant
+   - Apply "Knowledge Refinement": strip irrelevant sentences, extract key facts
+   - Pass refined context to LLM for generation
+
+2. INCORRECT (Low confidence retrieval)
+   - Retrieved documents are clearly irrelevant or misleading
+   - Discard all retrieved documents
+   - Fall back to WEB SEARCH (Bing/Google/Tavily) for fresh retrieval
+   - Use web search results as context instead
+
+3. AMBIGUOUS (Medium confidence retrieval)
+   - Relevance unclear — could go either way
+   - Combine BOTH: use corpus documents AND web search results
+   - Merge both sources, apply knowledge refinement
+   - Pass merged context to LLM
+
+HOW IT WORKS — STEP BY STEP
+-----------------------------
+1. STANDARD RETRIEVAL
+   - Run vector search / BM25 on knowledge base
+   - Retrieve initial top-K documents
+
+2. RELEVANCE EVALUATION
+   - Pass each (query, document) pair through the lightweight evaluator
+   - Evaluator is a fine-tuned T5 or BERT classifier
+   - Output: relevance confidence score ∈ [0, 1]
+   - Decision boundary: Correct > 0.7, Incorrect < 0.3, Ambiguous = 0.3–0.7
+
+3. KNOWLEDGE REFINEMENT (for Correct / Ambiguous branches)
+   - Decompose-then-recompose algorithm:
+     a. Split document into sentences
+     b. Score each sentence for relevance to the query
+     c. Discard irrelevant sentences
+     d. Recompose the relevant sentences into a clean context
+
+4. WEB SEARCH FALLBACK (for Incorrect / Ambiguous branches)
+   - Issue web search queries derived from the original user query
+   - Parse web results, strip HTML, extract key passages
+
+5. GENERATION
+   - Pass refined, verified context to the LLM
+   - LLM generates answer from high-quality context only
+
+RETRIEVAL EVALUATOR DETAILS
+-----------------------------
+CRAG uses a lightweight retrieval evaluator model:
+  - Architecture: Fine-tuned T5-large or BERT-base classifier
+  - Input: concatenate(query, retrieved_document_text)
+  - Output: binary relevance score or confidence ∈ [0, 1]
+  - Training data: (query, doc, relevance_label) triples
+  - Inference latency: ~20–50ms (very fast)
+
+The evaluator is designed to be "plug-and-play" — it can be added to any existing
+RAG pipeline without changing the retriever or generator.
+
+BENCHMARK RESULTS
+------------------
+Dataset     | Standard RAG | Self-RAG | CRAG  | Notes
+------------|-------------|----------|-------|---------------------------
+PopQA       | 54.1        | 62.3     | 68.2  | Open-domain QA
+Biography   | 61.7        | 67.4     | 73.1  | Long-form generation
+PubHealth   | 64.2        | 69.8     | 75.3  | Medical fact verification
+ARC-Chall.  | 71.8        | 74.6     | 77.2  | Multiple-choice reasoning
+
+CRAG significantly improves over standard RAG and Self-RAG across all four datasets.
+
+STRENGTHS
+---------
++ Plug-and-play — no generator fine-tuning needed
++ Web search fallback handles out-of-date or missing knowledge
++ Knowledge refinement removes noise from retrieved context
++ Provably reduces hallucinations from bad retrieval
++ Generalizable — works on top of any RAG system
++ Strong benchmark performance vs Self-RAG without generator fine-tuning
+
+WEAKNESSES
+-----------
+- Requires the web search fallback (needs internet access)
+- Evaluator model needs its own training/deployment
+- Adds latency: evaluator call + optional web search
+- Web search can introduce noise from untrustworthy sources
+- Ambiguous branch can lead to very long context windows
+- Web search costs money per query (Tavily, Bing, Google APIs)
+
+INTEGRATION WITH THIS PROJECT
+-------------------------------
+Adding CRAG to backend/app/routers/chat.py:
+
+Step 1: Add relevance evaluator
+  def evaluate_relevance(query: str, doc: KBDocument) -> float:
+      # Call a classifier model (or prompt-based scoring via LLM)
+      prompt = f"Is this document relevant to the query?\nQuery: {query}\nDoc: {doc.content[:500]}"
+      # Return score 0.0-1.0
+
+Step 2: Branch logic
+  score = evaluate_relevance(query, top_doc)
+  if score > 0.7:
+      context = knowledge_refinement(picks)
+  elif score < 0.3:
+      context = web_search_fallback(query)
+  else:
+      context = merge(knowledge_refinement(picks), web_search_fallback(query))
+
+Cost estimate: +$0.002–0.01 per query (evaluator + optional web search)
+
+OPEN-SOURCE REPRODUCTION
+--------------------------
+A 2026 paper provides a full open-source reproduction and explainability analysis:
+https://arxiv.org/abs/2603.16169
+
+Key findings from the reproduction:
+- CRAG's gains are consistent across domains
+- Web search fallback is the largest single contributor to improvement
+- Knowledge refinement helps most on long documents
+
+WHEN TO USE CORRECTIVE RAG
+----------------------------
+- Knowledge base may be incomplete or stale (web fallback handles gaps)
+- High-stakes domains where hallucination is costly (medical, legal, financial)
+- When you cannot fine-tune the generator model
+- As a reliability layer on top of existing Naive or Advanced RAG
+- Deployment where knowledge base updates lag behind real-world changes
+
+REFERENCES
+-----------
+- Original Paper: https://arxiv.org/abs/2401.15884
+- Paper PDF: https://arxiv.org/pdf/2401.15884
+- ar5iv readable: https://ar5iv.labs.arxiv.org/html/2401.15884
+- Open-source reproduction: https://arxiv.org/abs/2603.16169
+- Medium review: https://sulbhajain.medium.com/corrective-retrieval-augmented-generation-crag-paper-review-2bf9fe0f3b31
+- Learn Prompting guide: https://learnprompting.org/docs/retrieval_augmented_generation/corrective-rag
+- OpenReview: https://openreview.net/forum?id=JnWJbrnaUE

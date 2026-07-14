@@ -1,0 +1,166 @@
+RAG TYPE: Graph RAG
+====================
+Full Title: "From Local to Global: A Graph RAG Approach to Query-Focused Summarization"
+Authors: Darren Edge, Ha Trinh, Newman Cheng, Joshua Bradley, Alex Chao, Apurva Mody, Steven Truitt, Jonathan Larson
+Organization: Microsoft Research
+Year: 2024
+Paper URL: https://www.microsoft.com/en-us/research/publication/from-local-to-global-a-graph-rag-approach-to-query-focused-summarization/
+Blog: https://www.microsoft.com/en-us/research/blog/graphrag-unlocking-llm-discovery-on-narrative-private-data/
+GitHub: https://github.com/microsoft/graphrag
+GitHub (curated resources): https://github.com/DEEP-PolyU/Awesome-GraphRAG
+
+OVERVIEW
+--------
+Graph RAG organizes a document corpus into a KNOWLEDGE GRAPH where entities (people,
+places, concepts, organizations) are nodes and their relationships are edges. Instead of
+retrieving flat text chunks, Graph RAG retrieves structured relational knowledge — enabling
+multi-hop reasoning, entity-centric queries, and holistic summarization across an entire corpus.
+
+Microsoft Research demonstrated that Graph RAG provides "substantial improvements in
+question-and-answer performance when conducting document analysis of complex information."
+
+CORE DIFFERENCE FROM NAIVE RAG
+--------------------------------
+Naive RAG views documents as: "a bag of text chunks"
+Graph RAG views documents as: "a network of entities and relationships"
+
+In Naive RAG: retrieving "Apple CEO" → finds chunks mentioning "Apple" and "CEO"
+In Graph RAG: retrieving "Apple CEO" → traverses entity node Apple → CEO relationship edge
+              → entity node Tim Cook → gets all connected context about Tim Cook's role
+
+HOW IT WORKS — STEP BY STEP
+-----------------------------
+PHASE 1: GRAPH CONSTRUCTION (Offline — LLM-intensive)
+
+Step 1: Entity Extraction
+  - Feed each document chunk to GPT-4 with specialized entity extraction prompts
+  - Extract: entities (PERSON, ORG, LOCATION, CONCEPT, EVENT)
+  - Extract: relationships between entities (WHO did WHAT to WHOM)
+  - Extract: claims / assertions associated with each entity
+
+Step 2: Graph Building
+  - Create nodes for every unique entity
+  - Create edges for every relationship between entities
+  - Assign each edge a weight based on co-occurrence frequency and semantic strength
+  - Link each node/edge to the source document passage
+
+Step 3: Community Detection
+  - Apply the Leiden algorithm (hierarchical graph clustering)
+  - Group closely related entities into "communities"
+  - Generate community summaries using the LLM
+  - Communities form at multiple levels (fine-grained → coarse-grained)
+
+Step 4: Index Creation
+  - Store graph in a graph database (Neo4j, NetworkX, or flat parquet files)
+  - Index community summaries in a vector store for fast retrieval
+
+PHASE 2: QUERY ANSWERING (Online)
+
+Step 5: Query Routing (Local vs Global)
+  - LOCAL search: specific entity-level questions
+    → Traverse graph from matched entity nodes + retrieve adjacent context
+  - GLOBAL search: holistic summarization questions ("What are the main themes?")
+    → Retrieve community summaries at appropriate level, map-reduce to final answer
+
+Step 6: Context Assembly
+  - Collect entity descriptions, relationship summaries, community summaries
+  - Rank by relevance to query
+  - Trim to LLM context window
+
+Step 7: Generation
+  - LLM generates answer from structured graph context
+
+KNOWLEDGE GRAPH STRUCTURE
+---------------------------
+Entity Node: {
+  id: "Apple_Inc",
+  type: "ORGANIZATION",
+  description: "American multinational technology company",
+  source_docs: [doc_12, doc_47, doc_103],
+  community_id: "community_tech_companies"
+}
+
+Relationship Edge: {
+  source: "Tim_Cook",
+  target: "Apple_Inc",
+  relation: "CEO_OF",
+  since: "2011",
+  weight: 0.95
+}
+
+Community Summary: {
+  id: "community_tech_companies",
+  level: 2,
+  entities: ["Apple_Inc", "Google", "Microsoft", "Tim_Cook", "Sundar_Pichai"],
+  summary: "Major technology corporations and their leadership..."
+}
+
+BENCHMARK RESULTS
+------------------
+Metric                | Standard RAG | Graph RAG | Improvement
+----------------------|-------------|-----------|------------
+Comprehensiveness     | 32.1%       | 72.4%     | +125%
+Diversity             | 28.3%       | 61.7%     | +118%
+AI Analyst Accuracy   | Baseline    | 5x better | +400%
+Multi-hop Q&A         | Poor        | Excellent | N/A
+
+STRENGTHS
+---------
++ Excellent for multi-hop questions spanning multiple documents
++ Understands entity relationships and organizational hierarchies
++ Holistic corpus understanding — can answer "what are the main themes?"
++ Traceability — every answer traces back to source entities
++ Reduces hallucinations on relationship questions
++ Community summaries enable efficient global queries
+
+WEAKNESSES
+-----------
+- Expensive graph construction: requires many LLM calls per document
+- Slow indexing: unsuitable for real-time document ingestion
+- Graph database infrastructure required
+- Overkill for simple FAQ systems
+- Entity extraction quality depends heavily on LLM quality
+- Poor on exact keyword matching (still needs hybrid retrieval)
+
+GRAPH RAG vs NAIVE RAG FOR COMMON QUESTIONS
+---------------------------------------------
+Question: "Who reports to the CEO of Acme Corp and what did they announce?"
+Naive RAG: Finds chunks with "CEO" + "announce" — may miss relationship chain
+Graph RAG: CEO entity → reports_to edges → direct reports → announcement edges → full answer
+
+Question: "What are all the compliance risks mentioned across our policy documents?"
+Naive RAG: Returns chunks containing "compliance" + "risk" — misses cross-doc synthesis
+Graph RAG: Traverses all "compliance_risk" entity nodes → community summary → full picture
+
+DEPLOYMENT OPTIONS
+-------------------
+1. Microsoft GraphRAG (open source):
+   pip install graphrag
+   graphrag init --root ./my-project
+   graphrag index --root ./my-project
+   graphrag query --root ./my-project --method global "What are the main themes?"
+
+2. LightRAG (lightweight alternative):
+   pip install lightrag-hku
+   Fast graph construction with dual-level retrieval
+
+3. Neo4j + LangChain:
+   from langchain_community.graphs import Neo4jGraph
+   Full-featured graph database backend
+
+WHEN TO USE GRAPH RAG
+-----------------------
+- Large narrative corpora (books, legal documents, research papers)
+- Enterprise knowledge bases where entity relationships matter
+- Analyst workloads: "What are all the risks/themes/decisions across our documents?"
+- Multi-hop Q&A: questions requiring connecting facts across multiple documents
+- When you need global (holistic) understanding of a document collection
+
+REFERENCES
+-----------
+- Microsoft Research Blog: https://www.microsoft.com/en-us/research/blog/graphrag-unlocking-llm-discovery-on-narrative-private-data/
+- Original Paper: https://www.microsoft.com/en-us/research/publication/from-local-to-global-a-graph-rag-approach-to-query-focused-summarization/
+- Microsoft GraphRAG GitHub: https://github.com/microsoft/graphrag
+- Awesome GraphRAG (curated list): https://github.com/DEEP-PolyU/Awesome-GraphRAG
+- GraphRAG Explained (Zilliz): https://medium.com/@zilliz_learn/graphrag-explained-enhancing-rag-with-knowledge-graphs-3312065f99e1
+- Comparing RAG and GraphRAG (arXiv): https://arxiv.org/pdf/2509.16780

@@ -1,0 +1,179 @@
+RAG TYPE: Modular RAG
+======================
+Also Known As: Plug-and-Play RAG, Composable RAG, Pipeline RAG
+Key Reference: "Modular RAG: Transforming RAG Systems into LEGO-like Reconfigurable Frameworks"
+Year: 2024
+arXiv: Survey covered in https://arxiv.org/abs/2312.10997 (RAG Survey by Gao et al.)
+Framework Examples: LangChain, LlamaIndex, Haystack, RAGFlow
+
+OVERVIEW
+--------
+Modular RAG reconceptualizes the RAG pipeline not as a fixed sequence of steps (retrieve → augment → generate)
+but as a COLLECTION OF INTERCHANGEABLE MODULES where each component can be independently
+replaced, upgraded, or reconfigured without affecting others. Think of it as LEGO blocks
+for RAG — you pick the retriever, reader, reranker, router, and memory module you need,
+plug them together, and get a custom RAG system.
+
+THE MODULE TYPES
+-----------------
+Modular RAG defines six categories of interchangeable modules:
+
+1. INDEXING MODULE (How documents are stored)
+   Options:
+   - Chunk-based: Fixed-size text chunks (Naive RAG default)
+   - Hierarchical: Document → Section → Paragraph → Sentence
+   - Semantic: Chunks by semantic similarity boundaries (not fixed size)
+   - Entity-based: Knowledge graph nodes
+   - Summary: Hierarchical summaries + original chunks
+   - Multi-vector: Multiple embeddings per chunk (parent + child)
+
+2. RETRIEVAL MODULE (How relevant docs are found)
+   Options:
+   - Dense vector retrieval (FAISS, Pinecone)
+   - Sparse retrieval (BM25, TF-IDF)
+   - Hybrid (dense + sparse)
+   - Knowledge graph traversal
+   - SQL/structured query
+   - Web search API
+   - Each retriever can be swapped without changing other modules
+
+3. RERANKING MODULE (How results are scored/reordered)
+   Options:
+   - Cross-encoder reranker (bge-reranker, ms-marco)
+   - Cohere Rerank API
+   - LLM-as-judge reranking
+   - Diversity-aware reranking (MMR: Maximum Marginal Relevance)
+   - No reranking (skip for speed)
+
+4. ROUTING MODULE (Which retriever to use per query)
+   Options:
+   - Hardcoded: always use vector retrieval
+   - Rule-based: keywords → SQL, semantic → vector
+   - LLM-based: LLM decides based on query type
+   - Classifier-based: small model classifies query complexity
+
+5. READER/GENERATOR MODULE (How the LLM generates the answer)
+   Options:
+   - Standard generation (system prompt + context + query)
+   - Chain-of-Thought (CoT) generation
+   - Extractive reading (directly quote from context)
+   - Self-RAG generation (with reflection tokens)
+   - Speculative generation (specialist + generalist)
+
+6. MEMORY MODULE (What the system remembers across queries)
+   Options:
+   - None (stateless RAG — each query independent)
+   - Short-term: Conversation history in context window
+   - Long-term: Previous Q&A pairs stored in vector DB
+   - Episodic: Key facts extracted from previous sessions
+
+THE MODULAR PIPELINE IN CODE
+------------------------------
+Modular RAG in LangChain (illustrative):
+
+  # Mix and match modules freely
+  indexing_module = HierarchicalDocumentSplitter(chunk_size=512, parent_chunk_size=2048)
+  retrieval_module = EnsembleRetriever([FAISS_retriever, BM25_retriever])
+  reranking_module = CohereReranker(model="rerank-english-v3.0", top_n=5)
+  routing_module = LLMQueryRouter(strategies=["vector", "sql", "web"])
+  memory_module = ConversationSummaryBufferMemory(llm=llm, max_token_limit=1000)
+  generator_module = ChatOpenAI(model="gpt-4o", temperature=0.2)
+
+  # Compose pipeline
+  rag_pipeline = ModularRAGChain(
+      indexer=indexing_module,
+      retriever=retrieval_module,
+      reranker=reranking_module,
+      router=routing_module,
+      memory=memory_module,
+      generator=generator_module
+  )
+
+ADVANCED PATTERNS IN MODULAR RAG
+-----------------------------------
+Pattern 1: MULTI-SOURCE ROUTING
+  - Different retrievers for different document types
+  - Text documents → vector retrieval
+  - CSVs/databases → SQL retrieval
+  - Recent events → web search
+  - Same query might activate multiple retrievers in parallel
+
+Pattern 2: HIERARCHICAL RETRIEVAL
+  - First retrieve at section level (coarse)
+  - Within matched sections, retrieve at paragraph level (fine)
+  - Multi-granularity improves context quality
+  - Used in A-RAG (Hierarchical Retrieval Interfaces)
+
+Pattern 3: ADAPTIVE MODULE SELECTION
+  - Complexity classifier chooses which modules to activate
+  - Simple query: skip reranking + memory (fast path)
+  - Complex query: enable all modules (quality path)
+
+Pattern 4: PIPELINE CHAINING
+  - Output of one RAG pipeline feeds into another
+  - Example: web search RAG → feeds → knowledge graph RAG
+  - Or: SQL RAG summary → feeds → vector RAG for context
+
+FRAMEWORKS FOR MODULAR RAG
+----------------------------
+LangChain:
+  Pros: Huge community, many integrations, very flexible
+  Cons: Heavy, complex, verbose
+  Best for: Prototyping and integration-heavy systems
+
+LlamaIndex:
+  Pros: Strong indexing abstractions, good for document processing
+  Cons: Somewhat opinionated architecture
+  Best for: Document-heavy enterprise RAG
+
+Haystack:
+  Pros: Production-ready, clean pipeline API, evaluation built-in
+  Cons: Smaller community than LangChain
+  Best for: Production deployments with CI/CD requirements
+
+RAGFlow:
+  Pros: Deep document parsing, open-source, visual pipeline builder
+  Cons: Newer, less mature ecosystem
+  Best for: Document-intensive RAG with complex parsing needs
+
+APPLYING MODULAR RAG TO THIS PROJECT
+---------------------------------------
+The current project (chat.py) is a MONOLITHIC RAG implementation.
+Refactoring it into Modular RAG would mean:
+
+  Module 1 (current indexing): KBDocument SQLite table → could add chunking strategies
+  Module 2 (current retrieval): cosine similarity → could swap to Hybrid or SQL
+  Module 3 (missing reranker): Add Cohere Rerank or bge-reranker
+  Module 4 (missing router): Add query type classifier (structured vs unstructured)
+  Module 5 (current generator): OpenRouter LLM call → could swap model easily
+  Module 6 (missing memory): Add conversation history to ChatRequest/ChatResponse
+
+The config.py already has `openrouter_model` as a setting — this IS modular!
+Extending it: add `retrieval_strategy` and `reranker_model` settings.
+
+STRENGTHS
+---------
++ Maximum flexibility — swap any component independently
++ Easier A/B testing of individual modules
++ Each module can be tested and optimized in isolation
++ Supports incremental improvements (don't rebuild the whole pipeline)
++ Industry best practice for production RAG systems
++ Supports diverse data types through specialized retrievers
+
+WEAKNESSES
+-----------
+- Higher initial complexity vs monolithic Naive RAG
+- More moving parts = more potential failure points
+- Module interfaces must be well-defined to enable swapping
+- Performance tuning requires evaluating all module combinations
+- Over-engineering risk: don't modularize if you only have one use case
+
+REFERENCES
+-----------
+- RAG Survey (Gao et al., 2023): https://arxiv.org/abs/2312.10997
+- 20 Advanced RAG Types (2026): https://www.turingpost.com/p/ragtypes
+- LangChain RAG: https://python.langchain.com/docs/use_cases/question_answering/
+- LlamaIndex: https://docs.llamaindex.ai/en/stable/
+- Haystack: https://haystack.deepset.ai/
+- RAGFlow: https://ragflow.io/blog/rag-review-2025-from-rag-to-context
+- A-RAG Hierarchical: https://arxiv.org/pdf/2602.03442

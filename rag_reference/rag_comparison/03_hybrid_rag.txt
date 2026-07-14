@@ -1,0 +1,128 @@
+RAG TYPE: Hybrid RAG
+=====================
+Also Known As: Dense + Sparse RAG, BM25 + Vector RAG, Dual Retrieval RAG
+Year: 2021–2022 (popularized with Pinecone hybrid search, Weaviate hybrid)
+Key Technique: Reciprocal Rank Fusion (RRF) or weighted score combination
+
+OVERVIEW
+--------
+Hybrid RAG combines both sparse (BM25/keyword) and dense (vector/semantic) retrieval to
+get the best of both worlds. Each component handles what it does best: BM25 excels at
+exact keyword matching while dense vectors capture semantic meaning. Results from both
+are merged using a fusion algorithm, typically Reciprocal Rank Fusion (RRF), before
+being passed to the LLM.
+
+Industry data shows adding hybrid retrieval + a reranker fixes the majority of
+retrieval failures in production RAG systems. Cohere Rerank v3 + hybrid search
+consistently improves answer quality by 15–30% over pure vector search.
+
+HOW IT WORKS
+------------
+1. DUAL INDEXING (Offline)
+   - Index documents in vector DB (dense embeddings)
+   - Index documents in BM25 / Elasticsearch (sparse inverted index)
+   - Both indexes maintained in parallel
+
+2. PARALLEL RETRIEVAL (Online)
+   - Run dense vector search → get top-K1 docs with semantic scores
+   - Run sparse BM25 search → get top-K2 docs with keyword scores
+   - These two result sets may partially overlap
+
+3. SCORE FUSION
+   - Apply Reciprocal Rank Fusion (RRF):
+     RRF_score(d) = Σ 1 / (k + rank_i(d))
+     where k=60 (constant), rank_i = rank of doc d in list i
+   - OR: weighted_score = α × dense_score + (1-α) × sparse_score
+   - Sort by fused score, take top-K final docs
+
+4. OPTIONAL: RERANKING
+   - Pass fused candidates through a cross-encoder reranker
+   - Reranker scores every (query, doc) pair jointly — more accurate than bi-encoder
+   - Popular rerankers: Cohere Rerank v3, bge-reranker, cross-encoder/ms-marco
+
+5. GENERATION
+   - Top reranked docs passed to LLM as context
+
+RECIPROCAL RANK FUSION (RRF) EXPLAINED
+----------------------------------------
+RRF is a rank aggregation method. Given two ranked lists L1 and L2:
+  - A document ranked #1 in L1 gets score 1/(60+1) = 0.0164
+  - A document ranked #3 in L2 gets score 1/(60+3) = 0.0159
+  - Its combined RRF score = 0.0164 + 0.0159 = 0.0323
+  - Documents appearing in BOTH lists score higher
+  - k=60 smooths the curve so top ranks don't dominate completely
+
+The constant k=60 was empirically chosen in the original RRF paper (Cormack et al., 2009).
+
+STRENGTHS
+---------
++ Handles both semantic similarity AND exact matches
++ More robust across diverse query types
++ Consistently 15–30% better than either retrieval method alone
++ RRF requires no score normalization across heterogeneous retrievers
++ Gracefully degrades: if one retriever fails, the other picks up
++ Industry-standard approach for production RAG systems
+
+WEAKNESSES
+----------
+- Double the retrieval infrastructure (two indexes to maintain)
+- Higher latency than single retrieval (parallel requests needed)
+- More complex implementation
+- Tuning the fusion weight (α) requires evaluation data
+- Storage cost doubles for maintaining two indexes
+
+POPULAR IMPLEMENTATIONS
+------------------------
+- Elasticsearch: native hybrid search (knn + bm25)
+- Weaviate: hybrid search built-in (alpha parameter)
+- Pinecone: hybrid search with sparse-dense vectors
+- Qdrant: sparse + dense vector support
+- LangChain: EnsembleRetriever + RRF
+
+PRODUCTION BENCHMARK RESULTS
+------------------------------
+System                | NDCG@10 | Notes
+----------------------|---------|--------------------------------
+BM25 only             | 0.42    | Good on keyword queries
+Vector only           | 0.58    | Good on semantic queries
+Hybrid (RRF)          | 0.67    | Best of both
+Hybrid + Reranker     | 0.74    | Production gold standard
+
+UPGRADE PATH FOR THIS PROJECT
+-------------------------------
+Current: Pure vector RAG (chat.py)
+Step 1: Add SQLite FTS5 virtual table for BM25
+Step 2: Run both retrievals in parallel
+Step 3: Merge results with RRF
+Step 4: (Optional) Add Cohere Rerank API call
+
+Cost estimate: +$0.001 per query for Cohere reranker
+Latency impact: +50–100ms for dual retrieval (parallelizable)
+
+WHEN TO USE HYBRID RAG
+------------------------
+- Production systems with diverse query types
+- Enterprise search where both keywords and semantics matter
+- Legal, medical, financial corpora with domain-specific terminology
+- When you want the most reliable retrieval without agentic complexity
+- Default recommendation for most production RAG deployments
+
+COMPARISON TABLE
+-----------------
+Metric            | BM25 Only | Vector Only | Hybrid RAG
+------------------|-----------|-------------|------------
+Exact Match       | Excellent | Moderate    | Excellent
+Semantic Match    | Poor      | Excellent   | Excellent
+Robustness        | Low       | Medium      | High
+Complexity        | Low       | Medium      | High
+Latency           | Fastest   | Fast        | Medium
+Cost              | Lowest    | Low         | Medium
+Production-Ready  | Limited   | Yes         | Yes (gold std)
+
+REFERENCES
+-----------
+- RRF Paper (Cormack et al., 2009): https://dl.acm.org/doi/10.1145/1571941.1572114
+- Hybrid Search Guide: https://glaforge.dev/posts/2026/02/10/advanced-rag-understanding-reciprocal-rank-fusion-in-hybrid-search/
+- Cohere Rerank v3: https://cohere.com/blog/rerank-3
+- Weaviate Hybrid Search: https://weaviate.io/developers/weaviate/search/hybrid
+- 20 Advanced RAG Types (Turing Post 2026): https://www.turingpost.com/p/ragtypes
