@@ -4,25 +4,14 @@ Production-grade Retrieval-Augmented Generation (RAG) system featuring **14 dist
 
 ---
 
-## Demo Video
+## Read the Full Story
 
 A full walkthrough — login and both roles, the Knowledge Base, the Pipelines page,
-and live Chat across all 14 RAG strategies.
+and live Chat across all 14 RAG strategies — written up as a LinkedIn article.
 
-<video src="https://github.com/MRVARIABLE20/HackerRank_q1/raw/main/RAG%20Demo/RAG-Atlas-14-RAG-Strategies-One-App.mp4" controls muted width="100%"></video>
+[![Read: RAG Atlas — Building a Production-Ready Platform to Explore 14 RAG Strategies](RAG%20Demo/rag-atlas-article-cover.png)](https://www.linkedin.com/pulse/rag-atlas-building-production-ready-platform-explore-14-aayan-alam-yxdjc/)
 
-▶ **[Watch the demo video](RAG%20Demo/RAG-Atlas-14-RAG-Strategies-One-App.mp4)** &nbsp;(if the player above doesn't load inline, this link opens it on GitHub)
-
-<!--
-  NOTE ON INLINE PLAYBACK:
-  The <video> tag above points at the committed file's raw URL, which plays inline
-  on most GitHub README renders. For GUARANTEED inline playback (the way GitHub
-  officially supports video), open this README in GitHub's web editor, drag the
-  RAG Demo/RAG-Atlas-14-RAG-Strategies-One-App.mp4 file into the editor — GitHub
-  uploads it and replaces it with a https://github.com/user-attachments/assets/<id>
-  URL. Paste that URL as the <video src="..."> above. That method never depends on
-  the file staying in the repo.
--->
+### 📖 [**Read the article on LinkedIn**](https://www.linkedin.com/pulse/rag-atlas-building-production-ready-platform-explore-14-aayan-alam-yxdjc/)
 
 ---
 
